@@ -27,7 +27,7 @@ function createWindow() {
     show: false,
     frame: false,
     backgroundColor: '#121212',
-    ...(process.platform === 'linux' ? { icon } : { icon: join(__dirname, '../../resources/icon.ico') }),
+    icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,
