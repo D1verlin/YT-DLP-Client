@@ -1,0 +1,61 @@
+appId: com.ytdlp.client
+productName: YT-DLP Client
+copyright: Copyright © 2026
+
+directories:
+  buildResources: build
+  output: dist
+
+publish:
+  provider: github
+  owner: D1verlin
+  repo: YT-DLP-Client
+  releaseType: release
+
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintignore,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+
+asarUnpack:
+  - resources/**
+
+win:
+  icon: build/icon.ico
+  executableName: yt-dlp-client
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: YT-DLP Client
+  uninstallDisplayName: YT-DLP Client
+  artifactName: ${productName}-v${version}-Setup-x64.${ext}
+
+portable:
+  artifactName: ${productName}-v${version}-Portable-x64.${ext}
+
+linux:
+  icon: build/icon.png
+  executableName: yt-dlp-client
+  category: AudioVideo;Utility;
+  synopsis: High-performance desktop GUI client for yt-dlp
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+  artifactName: ${productName}-v${version}-x64.${ext}
+

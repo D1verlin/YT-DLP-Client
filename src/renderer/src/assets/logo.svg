@@ -1,0 +1,28 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="256" height="256" rx="60" fill="url(#paint0_linear_98_37)"/>
+<rect x="7.5" y="7.5" width="241" height="241" rx="52.5" stroke="white" stroke-opacity="0.02" stroke-width="15"/>
+<g filter="url(#filter0_i_98_37)">
+<path d="M195.078 94.2656C194.281 91.2975 192.719 88.5907 190.547 86.4162C188.375 84.2417 185.67 82.6757 182.703 81.875C171.781 78.9375 128 78.9375 128 78.9375C128 78.9375 84.2187 78.9375 73.2969 81.8594C70.3284 82.6575 67.6223 84.2226 65.4501 86.3975C63.2779 88.5724 61.7162 91.2806 60.9219 94.25C58 105.188 58 128 58 128C58 128 58 150.813 60.9219 161.734C62.5312 167.766 67.2812 172.516 73.2969 174.125C84.2187 177.063 128 177.062 128 177.062C128 177.062 171.781 177.063 182.703 174.125C188.734 172.516 193.469 167.766 195.078 161.734C198 150.813 198 128 198 128C198 128 198 105.188 195.078 94.2656ZM114.094 148.938V107.062L150.344 127.844L114.094 148.938Z" fill="url(#paint1_linear_98_37)"/>
+</g>
+<defs>
+<filter id="filter0_i_98_37" x="48" y="48" width="163" height="165" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dx="3" dy="5"/>
+<feGaussianBlur stdDeviation="3.65"/>
+<feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="shape" result="effect1_innerShadow_98_37"/>
+</filter>
+<linearGradient id="paint0_linear_98_37" x1="128" y1="0" x2="128" y2="256" gradientUnits="userSpaceOnUse">
+<stop stop-color="#333333"/>
+<stop offset="1" stop-color="#141414"/>
+</linearGradient>
+<linearGradient id="paint1_linear_98_37" x1="128" y1="78.9375" x2="128" y2="177.062" gradientUnits="userSpaceOnUse">
+<stop stop-color="#9CA4A7"/>
+<stop offset="0.495192" stop-color="#CECECE"/>
+<stop offset="1" stop-color="#A4A4A4"/>
+</linearGradient>
+</defs>
+</svg>
