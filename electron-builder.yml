@@ -46,6 +46,7 @@ portable:
   artifactName: ${productName}-v${version}-Portable-x64.${ext}
 
 linux:
+  maintainer: D1verlin <d1verlin@users.noreply.github.com>
   icon: build/icon.png
   executableName: yt-dlp-client
   category: AudioVideo;Utility;
