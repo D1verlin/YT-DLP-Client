@@ -17,7 +17,17 @@ function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue) {
   })
 
   ipcMain.handle('binaries:info', (_, forceRefresh) => binaryManager.getBinaryInfo(forceRefresh))
-  ipcMain.handle('binaries:update', () => binaryManager.updateYtDlp())
+  ipcMain.handle('binaries:update', () => binaryManager.updateYtDlp((progress) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('binaries:progress', progress)
+  }))
+  ipcMain.handle('binaries:setCustomYtDlp', (_, filePath) => {
+    const ok = binaryManager.setCustomYtDlp(filePath)
+    return { success: ok }
+  })
+  ipcMain.handle('binaries:setCustomFfmpeg', (_, filePath) => {
+    const ok = binaryManager.setCustomFfmpeg(filePath)
+    return { success: ok }
+  })
 
   ipcMain.handle('setup:complete', () => {
     store.completeFirstRun()

@@ -101,6 +101,37 @@ export default function SetupPage({ onComplete }) {
     }
   }
 
+  const handleSelectYtDlpFile = async () => {
+    try {
+      const file = await window.api.selectFile?.([
+        { name: 'yt-dlp Executable', extensions: ['exe', ''] },
+        { name: 'All Files', extensions: ['*'] }
+      ])
+      if (file) {
+        await window.api.setCustomYtDlp?.(file)
+        setDownloadError(null)
+        await loadBinaryInfo(true)
+      }
+    } catch (e) {
+      console.error('Failed to select yt-dlp file:', e)
+    }
+  }
+
+  const handleSelectFfmpegFile = async () => {
+    try {
+      const file = await window.api.selectFile?.([
+        { name: 'FFmpeg Executable', extensions: ['exe', ''] },
+        { name: 'All Files', extensions: ['*'] }
+      ])
+      if (file) {
+        await window.api.setCustomFfmpeg?.(file)
+        await loadBinaryInfo(true)
+      }
+    } catch (e) {
+      console.error('Failed to select FFmpeg file:', e)
+    }
+  }
+
   const handleComplete = async () => {
     try {
       await window.api.saveSettings?.(settings)
@@ -265,16 +296,26 @@ export default function SetupPage({ onComplete }) {
                   <span className="setup-bin-title">yt-dlp</span>
                   <span className="setup-bin-desc">{t('setupYtdlpDesc', language)}</span>
                 </div>
-                <div className="setup-bin-col-status">
-                  {ytdlpReady ? (
-                    <span className="setup-badge-clean success">
-                      {binaryInfo?.ytdlp?.version ? `v${binaryInfo.ytdlp.version}` : 'Installed'}
-                    </span>
-                  ) : (
-                    <span className="setup-badge-clean missing">
-                      {t('versionNotFound', language)}
-                    </span>
-                  )}
+                <div className="setup-bin-col-actions">
+                  <div className="setup-bin-col-status">
+                    {ytdlpReady ? (
+                      <span className="setup-badge-clean success">
+                        {binaryInfo?.ytdlp?.version ? `v${binaryInfo.ytdlp.version}` : 'Installed'}
+                      </span>
+                    ) : (
+                      <span className="setup-badge-clean missing">
+                        {t('versionNotFound', language)}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="setup-btn-row-action"
+                    onClick={handleSelectYtDlpFile}
+                    title={t('setupBtnBrowseManual', language)}
+                  >
+                    {t('btnBrowse', language)}
+                  </button>
                 </div>
               </div>
 
@@ -284,16 +325,26 @@ export default function SetupPage({ onComplete }) {
                   <span className="setup-bin-title">FFmpeg</span>
                   <span className="setup-bin-desc">{t('setupFfmpegDesc', language)}</span>
                 </div>
-                <div className="setup-bin-col-status">
-                  {ffmpegReady ? (
-                    <span className="setup-badge-clean success">
-                      {binaryInfo?.ffmpeg?.version ? `v${binaryInfo.ffmpeg.version}` : 'Installed'}
-                    </span>
-                  ) : (
-                    <span className="setup-badge-clean muted">
-                      Optional
-                    </span>
-                  )}
+                <div className="setup-bin-col-actions">
+                  <div className="setup-bin-col-status">
+                    {ffmpegReady ? (
+                      <span className="setup-badge-clean success">
+                        {binaryInfo?.ffmpeg?.version ? `v${binaryInfo.ffmpeg.version}` : 'Installed'}
+                      </span>
+                    ) : (
+                      <span className="setup-badge-clean muted">
+                        Optional
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="setup-btn-row-action"
+                    onClick={handleSelectFfmpegFile}
+                    title={t('setupBtnBrowseManual', language)}
+                  >
+                    {t('btnBrowse', language)}
+                  </button>
                 </div>
               </div>
             </div>
@@ -324,7 +375,7 @@ export default function SetupPage({ onComplete }) {
 
                 {downloadError && (
                   <div className="setup-msg-line error">
-                    {t('setupDownloadFailed', language)}: {downloadError}
+                    {downloadError}
                   </div>
                 )}
 
@@ -336,6 +387,13 @@ export default function SetupPage({ onComplete }) {
                       onClick={handleDownloadBinaries}
                     >
                       {downloadError ? t('setupBtnRetry', language) : t('setupBtnDownloadBinaries', language)}
+                    </button>
+                    <button
+                      type="button"
+                      className="setup-btn-ghost-sm"
+                      onClick={handleSelectYtDlpFile}
+                    >
+                      {t('setupBtnBrowseManual', language)}
                     </button>
                   </div>
                 )}

@@ -1,6 +1,6 @@
 {
   "name": "yt-dlp-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A modern desktop GUI client for yt-dlp",
   "author": "D1verlin <d1verlin@users.noreply.github.com>",
   "license": "MIT",
