@@ -1,6 +1,6 @@
 import { app } from 'electron'
 import { join } from 'path'
-import { existsSync, mkdirSync, createWriteStream, chmodSync, unlinkSync, renameSync, statSync } from 'fs'
+import { existsSync, mkdirSync, createWriteStream, chmodSync, unlinkSync, renameSync, statSync, readdirSync, rmSync, copyFileSync } from 'fs'
 import { get as httpsGet } from 'https'
 import { get as httpGet } from 'http'
 import { URL } from 'url'
@@ -139,14 +139,11 @@ class BinaryManager {
         onProgress({
           stage: 'ffmpeg',
           percent: 100,
-          message: `✓ ffmpeg найден: ${ffmpegPath}`
+          message: `✓ ffmpeg готов: ${ffmpegPath}`
         })
       } else {
-        onProgress({
-          stage: 'ffmpeg',
-          percent: 100,
-          message: 'ffmpeg не найден (опционально для объединения потоков)'
-        })
+        onProgress({ stage: 'ffmpeg', percent: 5, message: 'Загрузка FFmpeg...' })
+        await this._downloadFfmpeg(onProgress)
       }
 
       this.invalidateCache()
@@ -154,6 +151,19 @@ class BinaryManager {
       return { success: true }
     } catch (error) {
       return { success: false, error: error.message }
+    }
+  }
+
+  async downloadFfmpeg(onProgress) {
+    try {
+      if (typeof onProgress === 'function') {
+        onProgress({ stage: 'ffmpeg', percent: 5, message: 'Загрузка FFmpeg...' })
+      }
+      await this._downloadFfmpeg(onProgress || (() => {}))
+      this.invalidateCache()
+      return { success: true, message: 'FFmpeg успешно установлен' }
+    } catch (err) {
+      return { success: false, error: err.message }
     }
   }
 
@@ -258,6 +268,194 @@ class BinaryManager {
     throw new Error(
       `Не удалось загрузить yt-dlp ни с одного зеркала: ${lastError?.message || 'Ошибка соединения'}. ` +
       `Вы можете указать путь к yt-dlp.exe вручную кнопкой «Обзор».`
+    )
+  }
+
+  // ─── FFmpeg Asset Resolution & Download ────────────────────────────────────
+  _getFfmpegAssetName() {
+    const os = this.os
+    const architecture = arch()
+
+    if (os === 'win32') {
+      return 'ffmpeg-master-latest-win64-gpl.zip'
+    } else if (os === 'darwin') {
+      return architecture === 'arm64'
+        ? 'ffmpeg-master-latest-macos-arm64-gpl.zip'
+        : 'ffmpeg-master-latest-macos-x64-gpl.zip'
+    } else {
+      return architecture === 'arm64'
+        ? 'ffmpeg-master-latest-linuxarm64-gpl.tar.xz'
+        : 'ffmpeg-master-latest-linux64-gpl.tar.xz'
+    }
+  }
+
+  _getFfmpegDownloadCandidates(assetName) {
+    const rawGhUrl = `https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/${assetName}`
+    const list = [
+      { name: 'GitHub Release CDN', url: rawGhUrl },
+      { name: 'GHFast Mirror', url: `https://ghfast.top/${rawGhUrl}` },
+      { name: 'GHProxy Mirror', url: `https://mirror.ghproxy.com/${rawGhUrl}` }
+    ]
+    if (this.os === 'win32') {
+      list.push({
+        name: 'Gyan.dev Essentials',
+        url: 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
+      })
+    }
+    return list
+  }
+
+  async _extractArchive(archivePath, extractDir) {
+    if (!existsSync(extractDir)) {
+      mkdirSync(extractDir, { recursive: true })
+    }
+
+    if (this.os === 'win32') {
+      try {
+        await execAsync(`tar -xf "${archivePath}" -C "${extractDir}"`, { timeout: 90000, windowsHide: true })
+        return true
+      } catch (tarErr) {
+        try {
+          await execAsync(
+            `powershell -NoProfile -Command "Expand-Archive -LiteralPath '${archivePath}' -DestinationPath '${extractDir}' -Force"`,
+            { timeout: 120000, windowsHide: true }
+          )
+          return true
+        } catch (psErr) {
+          throw new Error(`Ошибка распаковки архива: ${tarErr.message} / ${psErr.message}`)
+        }
+      }
+    } else if (this.os === 'darwin') {
+      if (archivePath.endsWith('.zip')) {
+        await execAsync(`unzip -q -o "${archivePath}" -d "${extractDir}"`, { timeout: 90000 })
+      } else {
+        await execAsync(`tar -xf "${archivePath}" -C "${extractDir}"`, { timeout: 90000 })
+      }
+      return true
+    } else {
+      // Linux
+      await execAsync(`tar -xf "${archivePath}" -C "${extractDir}"`, { timeout: 90000 })
+      return true
+    }
+  }
+
+  _findFileRecursive(dir, filename) {
+    if (!existsSync(dir)) return null
+    const targetLower = filename.toLowerCase()
+    const entries = readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        const found = this._findFileRecursive(fullPath, filename)
+        if (found) return found
+      } else if (entry.name.toLowerCase() === targetLower) {
+        return fullPath
+      }
+    }
+    return null
+  }
+
+  async _downloadFfmpeg(onProgress) {
+    const assetName = this._getFfmpegAssetName()
+    const candidates = this._getFfmpegDownloadCandidates(assetName)
+    const isZip = assetName.endsWith('.zip')
+    const tempArchive = join(this.binDir, `ffmpeg_archive_tmp_${Date.now()}.${isZip ? 'zip' : 'tar.xz'}`)
+    const extractDir = join(this.binDir, `ffmpeg_extract_tmp_${Date.now()}`)
+
+    let lastError = null
+
+    for (let i = 0; i < candidates.length; i++) {
+      const candidate = candidates[i]
+      const mirrorIndex = i + 1
+      const totalMirrors = candidates.length
+
+      onProgress({
+        stage: 'ffmpeg',
+        percent: 5,
+        message: `Подключение к источнику FFmpeg ${mirrorIndex}/${totalMirrors} (${candidate.name})...`
+      })
+
+      try {
+        await this._downloadFileWithRedirects(
+          candidate.url,
+          tempArchive,
+          ({ percent, downloadedMB, totalMB, speedMBs }) => {
+            const sizeInfo = totalMB ? ` (${downloadedMB} / ${totalMB} МБ • ${speedMBs} МБ/с)` : ` (${downloadedMB} МБ)`
+            onProgress({
+              stage: 'ffmpeg',
+              percent,
+              message: `Загрузка FFmpeg... ${percent}%${sizeInfo}`
+            })
+          }
+        )
+
+        onProgress({
+          stage: 'ffmpeg',
+          percent: 92,
+          message: 'Распаковка архива FFmpeg...'
+        })
+
+        await this._extractArchive(tempArchive, extractDir)
+
+        const exeName = this.os === 'win32' ? 'ffmpeg.exe' : 'ffmpeg'
+        const probeExeName = this.os === 'win32' ? 'ffprobe.exe' : 'ffprobe'
+
+        const foundFfmpeg = this._findFileRecursive(extractDir, exeName)
+        if (!foundFfmpeg) {
+          throw new Error(`Исполняемый файл ${exeName} не найден в распакованном архиве`)
+        }
+
+        if (existsSync(this._ffmpegDefault)) {
+          try { unlinkSync(this._ffmpegDefault) } catch {}
+        }
+        copyFileSync(foundFfmpeg, this._ffmpegDefault)
+
+        // Also copy ffprobe if present
+        const foundProbe = this._findFileRecursive(extractDir, probeExeName)
+        if (foundProbe) {
+          const probeDest = join(this.binDir, probeExeName)
+          if (existsSync(probeDest)) {
+            try { unlinkSync(probeDest) } catch {}
+          }
+          copyFileSync(foundProbe, probeDest)
+          if (this.os !== 'win32') {
+            try { chmodSync(probeDest, '755') } catch {}
+          }
+        }
+
+        if (this.os !== 'win32') {
+          try { chmodSync(this._ffmpegDefault, '755') } catch {}
+        }
+
+        // Cleanup
+        try { unlinkSync(tempArchive) } catch {}
+        try { rmSync(extractDir, { recursive: true, force: true }) } catch {}
+
+        onProgress({
+          stage: 'ffmpeg',
+          percent: 100,
+          message: '✓ FFmpeg успешно загружен и установлен'
+        })
+        return
+      } catch (err) {
+        lastError = err
+        console.warn(`FFmpeg mirror ${candidate.name} failed: ${err.message}`)
+        try { if (existsSync(tempArchive)) unlinkSync(tempArchive) } catch {}
+        try { if (existsSync(extractDir)) rmSync(extractDir, { recursive: true, force: true }) } catch {}
+
+        if (i < candidates.length - 1) {
+          onProgress({
+            stage: 'ffmpeg',
+            percent: 10,
+            message: `Сбой источника FFmpeg «${candidate.name}», переключение на резервное зеркало...`
+          })
+        }
+      }
+    }
+
+    throw new Error(
+      `Не удалось загрузить FFmpeg ни с одного источника: ${lastError?.message || 'Ошибка соединения'}. ` +
+      `Вы можете указать путь к ffmpeg.exe вручную кнопкой «Обзор».`
     )
   }
 

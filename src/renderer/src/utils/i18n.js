@@ -189,6 +189,9 @@ export const translations = {
     versionNotFound: 'Не найден',
     btnUpdateYtDlp: 'Обновить yt-dlp',
     updatingYtDlp: 'Обновление...',
+    btnDownloadFfmpeg: 'Скачать FFmpeg',
+    btnUpdateFfmpeg: 'Обновить FFmpeg',
+    downloadingFfmpeg: 'Загрузка FFmpeg...',
     customYtDlpTitle: 'Пользовательский путь к yt-dlp.exe',
     customFfmpegTitle: 'Пользовательский путь к ffmpeg.exe',
     extraArgsTitle: 'Дополнительные аргументы командной строки yt-dlp',
@@ -196,7 +199,7 @@ export const translations = {
 
     // About
     aboutClientTitle: 'YT-DLP Desktop Client',
-    aboutVersion: 'Версия 1.0.1',
+    aboutVersion: 'Версия 1.0.2',
     aboutSubtitle: 'Modern High-Performance Downloader',
     aboutDesc: 'Мощный, стильный и быстрый графический интерфейс для yt-dlp с поддержкой YouTube, VK, Rutube, TikTok, Twitch, Soundcloud и более 1000 других сервисов.',
     btnResetDefaults: 'Сбросить настройки до заводских',
@@ -448,6 +451,9 @@ export const translations = {
     versionNotFound: 'Not found',
     btnUpdateYtDlp: 'Update yt-dlp',
     updatingYtDlp: 'Updating...',
+    btnDownloadFfmpeg: 'Download FFmpeg',
+    btnUpdateFfmpeg: 'Update FFmpeg',
+    downloadingFfmpeg: 'Downloading FFmpeg...',
     customYtDlpTitle: 'Custom yt-dlp executable path',
     customFfmpegTitle: 'Custom ffmpeg executable path',
     extraArgsTitle: 'Additional yt-dlp CLI arguments',
@@ -497,7 +503,7 @@ export const translations = {
 
     // About
     aboutClientTitle: 'YT-DLP Desktop Client',
-    aboutVersion: 'Version 1.0.1',
+    aboutVersion: 'Version 1.0.2',
     aboutSubtitle: 'Modern High-Performance Downloader',
     aboutDesc: 'Powerful, elegant and rapid desktop GUI client for yt-dlp supporting YouTube, VK, Rutube, TikTok, Twitch, Soundcloud and over 1000+ media sites.',
     btnResetDefaults: 'Reset Settings to Defaults',

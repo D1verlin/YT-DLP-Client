@@ -95,6 +95,7 @@ export default function SettingsPage() {
   // Binary info state
   const [binInfo, setBinInfo] = useState(null)
   const [isUpdatingYtDlp, setIsUpdatingYtDlp] = useState(false)
+  const [isDownloadingFfmpeg, setIsDownloadingFfmpeg] = useState(false)
   const [updateStatusMsg, setUpdateStatusMsg] = useState(null)
   const [devResetSuccess, setDevResetSuccess] = useState(false)
 
@@ -213,6 +214,24 @@ export default function SettingsPage() {
       setUpdateStatusMsg({ type: 'error', text: e.message })
     } finally {
       setIsUpdatingYtDlp(false)
+    }
+  }
+
+  const handleDownloadFfmpeg = async () => {
+    setIsDownloadingFfmpeg(true)
+    setUpdateStatusMsg(null)
+    try {
+      const res = await window.api.downloadFfmpeg?.()
+      if (res && res.success) {
+        setUpdateStatusMsg({ type: 'success', text: res.message || 'FFmpeg успешно установлен' })
+        loadBinInfo(true)
+      } else {
+        setUpdateStatusMsg({ type: 'error', text: res?.error || 'Ошибка при загрузке FFmpeg' })
+      }
+    } catch (e) {
+      setUpdateStatusMsg({ type: 'error', text: e.message })
+    } finally {
+      setIsDownloadingFfmpeg(false)
     }
   }
 
@@ -811,6 +830,24 @@ export default function SettingsPage() {
                     <p className="binary-card-path font-mono" title={binInfo?.ffmpeg?.path || ''}>
                       {binInfo?.ffmpeg?.path || 'bundled / default'}
                     </p>
+                  </div>
+
+                  <div className="binary-card-actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={handleDownloadFfmpeg}
+                      disabled={isDownloadingFfmpeg}
+                    >
+                      <Download size={13} className={isDownloadingFfmpeg ? 'spin-anim' : ''} />
+                      <span>
+                        {isDownloadingFfmpeg
+                          ? t('downloadingFfmpeg', lang)
+                          : (binInfo?.ffmpeg?.installed || binInfo?.ffmpeg?.exists)
+                            ? t('btnUpdateFfmpeg', lang)
+                            : t('btnDownloadFfmpeg', lang)}
+                      </span>
+                    </button>
                   </div>
                 </div>
               </div>

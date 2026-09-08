@@ -7,6 +7,7 @@ const api = {
   getBinaryInfo: (forceRefresh) => ipcRenderer.invoke('binaries:info', forceRefresh),
   updateYtDlp: () => ipcRenderer.invoke('binaries:update'),
   downloadBinaries: () => ipcRenderer.invoke('binaries:download'),
+  downloadFfmpeg: () => ipcRenderer.invoke('binaries:downloadFfmpeg'),
   setCustomYtDlp: (filePath) => ipcRenderer.invoke('binaries:setCustomYtDlp', filePath),
   setCustomFfmpeg: (filePath) => ipcRenderer.invoke('binaries:setCustomFfmpeg', filePath),
   completeSetup: () => ipcRenderer.invoke('setup:complete'),

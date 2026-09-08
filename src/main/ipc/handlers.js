@@ -20,6 +20,9 @@ function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue) {
   ipcMain.handle('binaries:update', () => binaryManager.updateYtDlp((progress) => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('binaries:progress', progress)
   }))
+  ipcMain.handle('binaries:downloadFfmpeg', () => binaryManager.downloadFfmpeg((progress) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('binaries:progress', progress)
+  }))
   ipcMain.handle('binaries:setCustomYtDlp', (_, filePath) => {
     const ok = binaryManager.setCustomYtDlp(filePath)
     return { success: ok }
