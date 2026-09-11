@@ -233,7 +233,7 @@ export const translations = {
 
     // About
     aboutClientTitle: 'YT-DLP Desktop Client',
-    aboutVersion: 'Версия 1.0.2',
+    aboutVersion: 'Версия 1.0.3',
     aboutSubtitle: 'Modern High-Performance Downloader',
     aboutDesc: 'Мощный, стильный и быстрый графический интерфейс для yt-dlp с поддержкой YouTube, VK, Rutube, TikTok, Twitch, Soundcloud и более 1000 других сервисов.',
     btnResetDefaults: 'Сбросить настройки до заводских',
@@ -586,7 +586,7 @@ export const translations = {
 
     // About
     aboutClientTitle: 'YT-DLP Desktop Client',
-    aboutVersion: 'Version 1.0.2',
+    aboutVersion: 'Version 1.0.3',
     aboutSubtitle: 'Modern High-Performance Downloader',
     aboutDesc: 'Powerful, elegant and rapid desktop GUI client for yt-dlp supporting YouTube, VK, Rutube, TikTok, Twitch, Soundcloud and over 1000+ media sites.',
     btnResetDefaults: 'Reset Settings to Defaults',

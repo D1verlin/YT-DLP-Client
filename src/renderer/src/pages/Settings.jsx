@@ -102,7 +102,7 @@ export default function SettingsPage() {
   // App OTA Updater state
   const [updaterState, setUpdaterState] = useState({
     status: 'idle',
-    currentVersion: '1.0.2',
+    currentVersion: '1.0.3',
     latestVersion: null,
     updateInfo: null,
     progress: null,
@@ -1059,7 +1059,7 @@ export default function SettingsPage() {
                       <Sparkles size={16} />
                       <span className="about-ota-title">{t('otaTitle', lang)}</span>
                       <span className="about-ota-badge">
-                        v{updaterState.currentVersion || '1.0.2'}
+                        v{updaterState.currentVersion || '1.0.3'}
                       </span>
                     </div>
                     <span className="about-ota-desc">{t('otaDesc', lang)}</span>
