@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link as LinkIcon, Clipboard, Sparkles, Loader2, X } from 'lucide-react'
 import FluidWaveform from '../components/FluidWaveform'
 import ConfigCard from '../components/ConfigCard'
@@ -9,10 +9,23 @@ const SUPPORTED_SITES = ['YouTube', 'Rutube', 'VK Video', 'TikTok', 'Twitch', 'S
 
 export default function AddPage({ onNav }) {
   const language = useStore((s) => s.language)
+  const pendingUrl = useStore((s) => s.pendingUrl)
+  const setPendingUrl = useStore((s) => s.setPendingUrl)
+
   const [url, setUrl] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [info, setInfo] = useState(null)
   const [analyzeErr, setAnalyzeErr] = useState(null)
+
+  useEffect(() => {
+    if (pendingUrl) {
+      setInfo(null)
+      setAnalyzeErr(null)
+      setUrl(pendingUrl)
+      analyze(pendingUrl)
+      setPendingUrl(null)
+    }
+  }, [pendingUrl])
 
   const analyze = async (targetUrl) => {
     const query = (targetUrl || url).trim()
@@ -64,7 +77,8 @@ export default function AddPage({ onNav }) {
       title: info.title,
       thumbnail: info.thumbnail,
       duration: info.duration,
-      config
+      config,
+      entries: config.entries || info.entries || []
     })
     if (res.success) {
       setInfo(null)
@@ -77,6 +91,7 @@ export default function AddPage({ onNav }) {
 
   return (
     <div className="add-page-container">
+
       {/* ── STAGE 1 & 2: SEARCH & ANALYZING (STABLE ZERO-JUMP LAYOUT) ── */}
       {!info && (
         <div className="add-page-content">

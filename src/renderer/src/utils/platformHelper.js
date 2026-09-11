@@ -7,40 +7,40 @@ export function detectPlatform(url = '', extractorKey = '') {
   const lowerKey = (extractorKey || '').toLowerCase()
 
   if (lowerUrl.includes('music.youtube.com')) {
-    return { name: 'YouTube Music', key: 'yt-music', color: '#ff0000', badgeCls: 'plat-youtube' }
+    return { name: 'YouTube Music', key: 'yt-music', color: '#ef5350', badgeCls: 'plat-youtube' }
   }
   if (lowerUrl.includes('/shorts/')) {
-    return { name: 'YouTube Shorts', key: 'yt-shorts', color: '#ff0000', badgeCls: 'plat-youtube' }
+    return { name: 'YouTube Shorts', key: 'yt-shorts', color: '#ef5350', badgeCls: 'plat-youtube' }
   }
   if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be') || lowerKey.includes('youtube')) {
-    return { name: 'YouTube', key: 'youtube', color: '#ff3333', badgeCls: 'plat-youtube' }
+    return { name: 'YouTube', key: 'youtube', color: '#ef5350', badgeCls: 'plat-youtube' }
   }
   if (lowerUrl.includes('vk.com') || lowerUrl.includes('vkvideo.ru') || lowerKey.includes('vk')) {
-    return { name: 'VK Видео', key: 'vk', color: '#0077ff', badgeCls: 'plat-vk' }
+    return { name: 'VK Видео', key: 'vk', color: '#ffffff', badgeCls: 'plat-vk' }
   }
   if (lowerUrl.includes('rutube.ru') || lowerKey.includes('rutube')) {
-    return { name: 'Rutube', key: 'rutube', color: '#00c853', badgeCls: 'plat-rutube' }
+    return { name: 'Rutube', key: 'rutube', color: '#ffffff', badgeCls: 'plat-rutube' }
   }
   if (lowerUrl.includes('tiktok.com') || lowerKey.includes('tiktok')) {
-    return { name: 'TikTok', key: 'tiktok', color: '#00f2fe', badgeCls: 'plat-tiktok' }
+    return { name: 'TikTok', key: 'tiktok', color: '#ffffff', badgeCls: 'plat-tiktok' }
   }
   if (lowerUrl.includes('instagram.com') || lowerKey.includes('instagram')) {
-    return { name: 'Instagram', key: 'instagram', color: '#e1306c', badgeCls: 'plat-instagram' }
+    return { name: 'Instagram', key: 'instagram', color: '#ffffff', badgeCls: 'plat-instagram' }
   }
   if (lowerUrl.includes('twitch.tv') || lowerKey.includes('twitch')) {
-    return { name: 'Twitch', key: 'twitch', color: '#9146ff', badgeCls: 'plat-twitch' }
+    return { name: 'Twitch', key: 'twitch', color: '#ffffff', badgeCls: 'plat-twitch' }
   }
   if (lowerUrl.includes('soundcloud.com') || lowerKey.includes('soundcloud')) {
-    return { name: 'SoundCloud', key: 'soundcloud', color: '#ff5500', badgeCls: 'plat-soundcloud' }
+    return { name: 'SoundCloud', key: 'soundcloud', color: '#ffffff', badgeCls: 'plat-soundcloud' }
   }
   if (lowerUrl.includes('vimeo.com') || lowerKey.includes('vimeo')) {
-    return { name: 'Vimeo', key: 'vimeo', color: '#1ab7ea', badgeCls: 'plat-vimeo' }
+    return { name: 'Vimeo', key: 'vimeo', color: '#ffffff', badgeCls: 'plat-vimeo' }
   }
   if (lowerUrl.includes('bilibili.com') || lowerKey.includes('bilibili')) {
-    return { name: 'Bilibili', key: 'bilibili', color: '#fb7299', badgeCls: 'plat-bilibili' }
+    return { name: 'Bilibili', key: 'bilibili', color: '#ffffff', badgeCls: 'plat-bilibili' }
   }
   if (lowerUrl.includes('t.me') || lowerUrl.includes('telegram.org') || lowerKey.includes('telegram')) {
-    return { name: 'Telegram', key: 'telegram', color: '#24a1de', badgeCls: 'plat-telegram' }
+    return { name: 'Telegram', key: 'telegram', color: '#ffffff', badgeCls: 'plat-telegram' }
   }
   if (lowerUrl.includes('twitter.com') || lowerUrl.includes('x.com') || lowerKey.includes('twitter')) {
     return { name: 'X / Twitter', key: 'twitter', color: '#ffffff', badgeCls: 'plat-twitter' }

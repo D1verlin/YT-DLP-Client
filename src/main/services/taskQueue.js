@@ -1,6 +1,7 @@
 import { spawn } from 'child_process'
 import { join, dirname } from 'path'
 import { existsSync, unlinkSync } from 'fs'
+import { Notification, shell } from 'electron'
 import {
   parseProgress,
   parseDestination,
@@ -57,6 +58,9 @@ class TaskQueue {
       thumbnail: options.thumbnail,
       duration: options.duration,
       config: options.config,
+      entries: Array.isArray(options.entries)
+        ? options.entries
+        : (Array.isArray(options.config?.entries) ? options.config.entries : []),
       status: 'pending',
       progress: 0,
       speed: '',
@@ -67,6 +71,8 @@ class TaskQueue {
       playlistCurrent: null,
       playlistTotal: null,
       playlistTitle: null,
+      errorMessage: null,
+      errorLog: [],
       createdAt: new Date().toISOString()
     }
     this.tasks.set(id, task)
@@ -149,6 +155,27 @@ class TaskQueue {
           task.playlistCurrent = playlistItem.current
           task.playlistTotal = playlistItem.total
           task.streamLabel = `Track ${playlistItem.current} / ${playlistItem.total}`
+
+          if (task.entries && task.entries.length > 0) {
+            const currentIdx = playlistItem.current - 1
+            task.entries.forEach((entry, i) => {
+              if (i < currentIdx) {
+                if (entry.status !== 'completed') {
+                  entry.status = 'completed'
+                  entry.progress = 100
+                }
+              } else if (i === currentIdx) {
+                if (entry.status !== 'completed') {
+                  entry.status = 'downloading'
+                }
+              } else {
+                if (entry.status !== 'completed') {
+                  entry.status = 'pending'
+                  entry.progress = 0
+                }
+              }
+            })
+          }
         }
 
         const playlistTitle = parsePlaylistTitle(line)
@@ -161,10 +188,25 @@ class TaskQueue {
           task.filePath = dest
           if (destCount > 0) streamIndex = Math.min(streamIndex + 1, totalStreams - 1)
           destCount++
+
+          if (task.entries && task.entries.length > 0 && task.playlistCurrent) {
+            const currentIdx = task.playlistCurrent - 1
+            if (task.entries[currentIdx]) {
+              task.entries[currentIdx].filePath = dest
+            }
+          }
         }
 
         const mergeDest = parseMergeDestination(line)
-        if (mergeDest) task.filePath = mergeDest
+        if (mergeDest) {
+          task.filePath = mergeDest
+          if (task.entries && task.entries.length > 0 && task.playlistCurrent) {
+            const currentIdx = task.playlistCurrent - 1
+            if (task.entries[currentIdx]) {
+              task.entries[currentIdx].filePath = mergeDest
+            }
+          }
+        }
 
         if (parseMerging(line)) {
           isMerging = true
@@ -172,14 +214,28 @@ class TaskQueue {
           this._notifyProgress(task)
         }
 
-        if (parseAlreadyDownloaded(line)) {
-          task.progress = 100
-          task.status = 'completed'
-          task.streamLabel = ''
-          this._saveTasks()
-          this._notifyTaskUpdate({ ...task })
-          this._processQueue()
-          return
+        const alreadyPath = parseAlreadyDownloaded(line)
+        if (alreadyPath) {
+          if (task.config?.isPlaylist) {
+            if (task.entries && task.entries.length > 0 && task.playlistCurrent) {
+              const currentIdx = task.playlistCurrent - 1
+              if (task.entries[currentIdx]) {
+                task.entries[currentIdx].status = 'completed'
+                task.entries[currentIdx].progress = 100
+                task.entries[currentIdx].filePath = alreadyPath
+              }
+            }
+            task.filePath = alreadyPath
+          } else {
+            task.progress = 100
+            task.status = 'completed'
+            task.streamLabel = ''
+            task.filePath = alreadyPath
+            this._saveTasks()
+            this._notifyTaskUpdate({ ...task })
+            this._processQueue()
+            return
+          }
         }
 
         const progress = parseProgress(line)
@@ -187,6 +243,14 @@ class TaskQueue {
         if (progress && now - lastProgressAt > 150) {
           lastProgressAt = now
           isMerging = false
+
+          if (task.entries && task.entries.length > 0 && task.playlistCurrent) {
+            const currentIdx = task.playlistCurrent - 1
+            if (task.entries[currentIdx] && task.entries[currentIdx].status !== 'completed') {
+              task.entries[currentIdx].progress = progress.percent
+              task.entries[currentIdx].status = 'downloading'
+            }
+          }
 
           let unified
           if (task.config?.isPlaylist && task.playlistTotal) {
@@ -213,22 +277,43 @@ class TaskQueue {
 
     proc.stderr.on('data', (data) => {
       const text = data.toString()
+      if (!task.errorLog) task.errorLog = []
       for (const line of text.split('\n')) {
+        const trimmed = line.trim()
+        if (trimmed) {
+          task.errorLog.push(trimmed)
+          if (task.errorLog.length > 100) task.errorLog.shift()
+        }
+
         const dest = parseDestination(line)
         if (dest && !isFragmentPath(dest)) {
           task.filePath = dest
           if (destCount > 0) streamIndex = Math.min(streamIndex + 1, totalStreams - 1)
           destCount++
+          if (task.entries && task.entries.length > 0 && task.playlistCurrent) {
+            const currentIdx = task.playlistCurrent - 1
+            if (task.entries[currentIdx]) {
+              task.entries[currentIdx].filePath = dest
+            }
+          }
         }
         const mergeDest = parseMergeDestination(line)
-        if (mergeDest) task.filePath = mergeDest
+        if (mergeDest) {
+          task.filePath = mergeDest
+          if (task.entries && task.entries.length > 0 && task.playlistCurrent) {
+            const currentIdx = task.playlistCurrent - 1
+            if (task.entries[currentIdx]) {
+              task.entries[currentIdx].filePath = mergeDest
+            }
+          }
+        }
       }
       console.error(`[task:${task.id}] ${text.trim()}`)
     })
 
     proc.on('close', (code) => {
       this.processes.delete(task.id)
-      if (task.status === 'paused' || task.status === 'cancelled') {
+      if (task.status === 'cancelled') {
         this._saveTasks()
         this._notifyTaskUpdate({ ...task })
         this._processQueue()
@@ -238,8 +323,44 @@ class TaskQueue {
         task.status = 'completed'
         task.progress = 100
         task.streamLabel = ''
+
+        if (task.entries && task.entries.length > 0) {
+          task.entries.forEach((entry) => {
+            entry.status = 'completed'
+            entry.progress = 100
+          })
+        }
+
+        // On Complete: Notification, Sound, Auto-Open
+        try {
+          const currentSettings = this.store.getSettings()
+          if (currentSettings.notifyOnComplete && Notification.isSupported()) {
+            const notif = new Notification({
+              title: 'YT-DLP Client',
+              body: `✓ Загрузка завершена: ${task.title || 'Файл готов'}`
+            })
+            notif.on('click', () => {
+              if (task.filePath && existsSync(task.filePath)) {
+                shell.showItemInFolder(task.filePath)
+              }
+            })
+            notif.show()
+          }
+          if (currentSettings.soundOnComplete) {
+            shell.beep()
+          }
+          if (currentSettings.autoOpenFolder && task.filePath && existsSync(task.filePath)) {
+            shell.showItemInFolder(task.filePath)
+          }
+        } catch (e) {
+          console.error('Notification/Sound error:', e)
+        }
       } else {
         task.status = 'error'
+        if (!task.errorMessage && task.errorLog && task.errorLog.length > 0) {
+          const errLine = task.errorLog.find((l) => l.startsWith('ERROR:')) || task.errorLog[task.errorLog.length - 1]
+          task.errorMessage = (errLine || 'Ошибка загрузки').replace(/^ERROR:\s*/, '')
+        }
       }
       this._saveTasks()
       this._notifyTaskUpdate({ ...task })
@@ -254,19 +375,56 @@ class TaskQueue {
     // Force UTF-8 encoding in yt-dlp
     args.push('--encoding', 'utf-8')
 
+    // Format, Codec & Bitrate handling
     if (config.format === 'audio') {
-      args.push('-f', 'ba/b', '-x', '--audio-format', 'mp3')
-    } else {
-      const quality = config.quality || 'best'
-      if (quality === 'best') {
-        args.push('-f', 'bv*+ba/b')
-      } else {
-        args.push('-f', `bv*[height<=?${quality}]+ba/b[height<=?${quality}]/bv*+ba/b`)
+      const audioFormat = config.audioFormat || settings.preferredAudioFormat || 'mp3'
+      const audioBitrate = config.audioBitrate || '320k'
+      args.push('-f', 'ba/b', '-x', '--audio-format', audioFormat)
+      if (audioBitrate && audioBitrate !== 'best') {
+        args.push('--audio-quality', audioBitrate)
       }
-      args.push('--merge-output-format', 'mp4')
+    } else {
+      const container = config.videoContainer || settings.preferredVideoFormat || 'mp4'
+      const quality = config.quality || 'best'
+      const codec = config.videoCodec || 'default'
+
+      if (codec === 'h264') {
+        if (quality === 'best') {
+          args.push('-f', 'bv*[vcodec^=avc1]+ba[acodec^=mp4a]/bv*[vcodec^=avc1]+ba/b[vcodec^=avc1]/bv*+ba/b')
+        } else {
+          args.push('-f', `bv*[vcodec^=avc1][height<=?${quality}]+ba[acodec^=mp4a]/bv*[vcodec^=avc1][height<=?${quality}]+ba/bv*[height<=?${quality}]+ba/b[height<=?${quality}]/bv*+ba/b`)
+        }
+      } else if (codec === 'av1') {
+        if (quality === 'best') {
+          args.push('-f', 'bv*[vcodec^=av01]+ba/bv*+ba/b')
+        } else {
+          args.push('-f', `bv*[vcodec^=av01][height<=?${quality}]+ba/bv*[height<=?${quality}]+ba/b[height<=?${quality}]/bv*+ba/b`)
+        }
+      } else {
+        if (quality === 'best') {
+          args.push('-f', 'bv*+ba/b')
+        } else {
+          args.push('-f', `bv*[height<=?${quality}]+ba/b[height<=?${quality}]/bv*+ba/b`)
+        }
+      }
+      args.push('--merge-output-format', container)
     }
 
-    // ffmpeg location (directory)
+    // Subtitles
+    const subs = config.subtitles || settings.embedSubs
+    if (subs && subs !== 'none') {
+      args.push('--write-subs', '--embed-subs')
+      if (subs === 'ru') args.push('--sub-langs', 'ru,ru-orig')
+      else if (subs === 'en') args.push('--sub-langs', 'en,en-orig')
+      else if (subs === 'all') args.push('--sub-langs', 'all')
+    }
+
+    // Time trimming section (e.g. *00:01:10-00:02:30)
+    if (config.timeRange && config.timeRange.trim()) {
+      args.push('--download-sections', config.timeRange.trim())
+    }
+
+    // FFmpeg directory
     const ffmpegDir = dirname(ffmpegPath)
     args.push('--ffmpeg-location', ffmpegDir)
 
@@ -286,46 +444,42 @@ class TaskQueue {
     }
     args.push('-o', outputPath)
 
-    // Optional flags
+    // Network & Connection Settings
     if (settings.limitRate) args.push('--limit-rate', settings.limitRate)
     if (settings.proxy) args.push('--proxy', settings.proxy)
+    if (settings.retries) args.push('--retries', String(settings.retries))
+    if (settings.socketTimeout) args.push('--socket-timeout', String(settings.socketTimeout))
+    if (settings.customUserAgent) args.push('--user-agent', settings.customUserAgent)
+
+    // Multi-fragment concurrent download acceleration
+    args.push('--concurrent-fragments', '4')
+
+    // Cookies
     if (settings.cookiesFromBrowser && settings.cookiesFromBrowser.trim()) {
       args.push('--cookies-from-browser', settings.cookiesFromBrowser.trim())
     } else if (settings.cookiesFilePath && settings.cookiesFilePath.trim()) {
       args.push('--cookies', settings.cookiesFilePath.trim())
     }
+
+    // Metadata & thumbnail
     if (settings.embedThumbnail) args.push('--embed-thumbnail')
     if (settings.addMetadata) args.push('--add-metadata')
+
+    // Custom extra arguments
+    if (settings.extraArgs && settings.extraArgs.trim()) {
+      const extraParts = settings.extraArgs.trim().match(/(?:[^\s"]+|"[^"]*")+/g) || []
+      for (const part of extraParts) {
+        const clean = part.replace(/^"|"$/g, '')
+        if (clean) args.push(clean)
+      }
+    }
+
     // Continue on non-fatal errors
     args.push('--no-abort-on-error')
-
     args.push('--newline')
     args.push(task.url)
+
     return args
-  }
-
-  pauseTask(id) {
-    const task = this.tasks.get(id)
-    if (!task) return false
-    const proc = this.processes.get(id)
-    if (proc) {
-      try { proc.kill('SIGINT') } catch { proc.kill() }
-      this.processes.delete(id)
-    }
-    task.status = 'paused'
-    this._saveTasks()
-    this._notifyTaskUpdate({ ...task })
-    return true
-  }
-
-  resumeTask(id) {
-    const task = this.tasks.get(id)
-    if (!task || task.status !== 'paused') return false
-    task.status = 'pending'
-    this._saveTasks()
-    this._notifyTaskUpdate({ ...task })
-    this._processQueue()
-    return true
   }
 
   cancelTask(id) {
@@ -350,13 +504,20 @@ class TaskQueue {
     task.speed = ''
     task.eta = ''
     task.errorMessage = null
+    task.errorLog = []
+    if (task.entries && task.entries.length > 0) {
+      task.entries.forEach((entry) => {
+        entry.status = 'pending'
+        entry.progress = 0
+      })
+    }
     this._saveTasks()
     this._notifyTaskUpdate({ ...task })
     this._processQueue()
     return true
   }
 
-  removeTask(id, deleteFile = true) {
+  removeTask(id, deleteFile = false) {
     const task = this.tasks.get(id)
     if (!task) return false
     if (task.status === 'downloading') {
@@ -390,24 +551,6 @@ class TaskQueue {
     return { changed, tasks: this.getTasks() }
   }
 
-  pauseAll() {
-    for (const [id, task] of this.tasks.entries()) {
-      if (task.status === 'downloading' || task.status === 'pending') {
-        this.pauseTask(id)
-      }
-    }
-    return true
-  }
-
-  resumeAll() {
-    for (const [id, task] of this.tasks.entries()) {
-      if (task.status === 'paused') {
-        this.resumeTask(id)
-      }
-    }
-    return true
-  }
-
   clearCompleted() {
     for (const [id, task] of this.tasks.entries()) {
       if (task.status === 'completed' || task.status === 'cancelled') {
@@ -434,7 +577,8 @@ class TaskQueue {
         filePath: task.filePath || null,
         playlistCurrent: task.playlistCurrent || null,
         playlistTotal: task.playlistTotal || null,
-        playlistTitle: task.playlistTitle || null
+        playlistTitle: task.playlistTitle || null,
+        entries: task.entries || []
       })
     }
   }

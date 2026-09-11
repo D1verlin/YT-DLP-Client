@@ -1,9 +1,9 @@
 import { ipcMain, dialog, app, shell } from 'electron'
-import { exec } from 'child_process'
+import { execFile } from 'child_process'
 import { normalize, resolve, dirname } from 'path'
 import { existsSync, statSync } from 'fs'
 
-function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue) {
+function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue, appUpdater) {
   // ─── Binaries ─────────────────────────────────────────────────────────────
   ipcMain.handle('binaries:check', () => ({
     ready: binaryManager.areBinariesReady(),
@@ -76,18 +76,18 @@ function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue) {
       const ytDlpPath = binaryManager.getYtDlpPath()
       const settings = store.getSettings()
 
-      const extraFlags = []
+      const args = ['--dump-single-json', '--no-warnings', '--flat-playlist']
       if (settings.cookiesFromBrowser && settings.cookiesFromBrowser.trim()) {
-        extraFlags.push(`--cookies-from-browser "${settings.cookiesFromBrowser.trim()}"`)
+        args.push('--cookies-from-browser', settings.cookiesFromBrowser.trim())
       } else if (settings.cookiesFilePath && settings.cookiesFilePath.trim()) {
-        extraFlags.push(`--cookies "${settings.cookiesFilePath.trim()}"`)
+        args.push('--cookies', settings.cookiesFilePath.trim())
       }
 
-      const flagsStr = extraFlags.length ? ` ${extraFlags.join(' ')}` : ''
-      const cmd = `"${ytDlpPath}" --dump-single-json --no-warnings --flat-playlist${flagsStr} "${url}"`
+      args.push(url.trim())
 
-      exec(
-        cmd,
+      execFile(
+        ytDlpPath,
+        args,
         {
           maxBuffer: 25 * 1024 * 1024,
           timeout: 60000,
@@ -135,7 +135,8 @@ function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue) {
                     id: e.id,
                     title: e.title,
                     duration: e.duration,
-                    uploader: e.uploader || e.channel || ''
+                    uploader: e.uploader || e.channel || '',
+                    url: e.webpage_url || e.url || (e.id ? `https://www.youtube.com/watch?v=${e.id}` : null)
                   })),
                   videoQualities: [
                     { label: '1080p Full HD', value: '1080' },
@@ -217,13 +218,9 @@ function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue) {
     const task = taskQueue.addTask(options)
     return { success: true, task }
   })
-  ipcMain.handle('download:pause', (_, id) => ({ success: taskQueue.pauseTask(id) }))
-  ipcMain.handle('download:resume', (_, id) => ({ success: taskQueue.resumeTask(id) }))
   ipcMain.handle('download:cancel', (_, id) => ({ success: taskQueue.cancelTask(id) }))
   ipcMain.handle('download:retry', (_, id) => ({ success: taskQueue.retryTask(id) }))
   ipcMain.handle('download:remove', (_, id) => ({ success: taskQueue.removeTask(id) }))
-  ipcMain.handle('download:pauseAll', () => ({ success: taskQueue.pauseAll() }))
-  ipcMain.handle('download:resumeAll', () => ({ success: taskQueue.resumeAll() }))
   ipcMain.handle('download:clearCompleted', () => ({ success: taskQueue.clearCompleted() }))
   ipcMain.handle('tasks:get', () => taskQueue.getTasks())
   ipcMain.handle('tasks:syncFiles', () => taskQueue.syncFiles())
@@ -260,6 +257,7 @@ function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue) {
   ipcMain.handle('window:maximize', () => {
     mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize()
   })
+  ipcMain.handle('window:isMaximized', () => mainWindow.isMaximized())
   ipcMain.handle('window:close', () => mainWindow.close())
 
   // ─── App Info ─────────────────────────────────────────────────────────────
@@ -336,7 +334,38 @@ function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue) {
       return { success: false, error: e.message }
     }
   })
+
+  // ─── OTA App Updates ───────────────────────────────────────────────────────
+  ipcMain.handle('updater:check', async (_, isSilent = false) => {
+    if (appUpdater) {
+      return appUpdater.checkForUpdates(isSilent)
+    }
+    return { status: 'error', error: 'Updater not initialized' }
+  })
+
+  ipcMain.handle('updater:download', async () => {
+    if (appUpdater) {
+      return appUpdater.downloadUpdate()
+    }
+    return { success: false, error: 'Updater not initialized' }
+  })
+
+  ipcMain.handle('updater:install', () => {
+    if (appUpdater) {
+      appUpdater.quitAndInstall()
+      return { success: true }
+    }
+    return { success: false, error: 'Updater not initialized' }
+  })
+
+  ipcMain.handle('updater:getState', () => {
+    if (appUpdater) {
+      return appUpdater.getState()
+    }
+    return null
+  })
 }
 
 export { registerIpcHandlers }
+
 

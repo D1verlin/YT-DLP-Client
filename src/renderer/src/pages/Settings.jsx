@@ -99,6 +99,16 @@ export default function SettingsPage() {
   const [updateStatusMsg, setUpdateStatusMsg] = useState(null)
   const [devResetSuccess, setDevResetSuccess] = useState(false)
 
+  // App OTA Updater state
+  const [updaterState, setUpdaterState] = useState({
+    status: 'idle',
+    currentVersion: '1.0.2',
+    latestVersion: null,
+    updateInfo: null,
+    progress: null,
+    error: null
+  })
+
   const handleTestSetup = () => {
     useStore.getState().setIsSetupActive(true)
   }
@@ -121,7 +131,7 @@ export default function SettingsPage() {
     }
   }
 
-  // Load settings & binaries info
+  // Load settings, binaries info & updater status
   useEffect(() => {
     window.api.getSettings?.().then((loaded) => {
       if (loaded) {
@@ -132,6 +142,18 @@ export default function SettingsPage() {
       }
     })
     loadBinInfo()
+
+    window.api.getAppUpdateState?.().then((st) => {
+      if (st) setUpdaterState(st)
+    })
+
+    const unsubUpdater = window.api.onAppUpdateStatus?.((state) => {
+      if (state) setUpdaterState(state)
+    })
+
+    return () => {
+      unsubUpdater?.()
+    }
   }, [])
 
   const loadBinInfo = async (forceRefresh = false) => {
@@ -250,6 +272,36 @@ export default function SettingsPage() {
   const handleClearCompleted = () => {
     window.api.clearCompletedDownloads?.()
     clearCompletedTasks()
+  }
+
+  const handleCheckAppUpdate = async () => {
+    setUpdaterState((prev) => ({ ...prev, status: 'checking', error: null }))
+    try {
+      const res = await window.api.checkForAppUpdates?.(false)
+      if (res && res.status) setUpdaterState(res)
+    } catch (e) {
+      setUpdaterState((prev) => ({ ...prev, status: 'error', error: e.message }))
+    }
+  }
+
+  const handleDownloadAppUpdate = async () => {
+    try {
+      await window.api.downloadAppUpdate?.()
+    } catch (e) {
+      setUpdaterState((prev) => ({ ...prev, status: 'error', error: e.message }))
+    }
+  }
+
+  const handleInstallAppUpdate = () => {
+    window.api.installAppUpdate?.()
+  }
+
+  const handleOpenReleasePage = () => {
+    if (updaterState.updateInfo?.htmlUrl) {
+      window.api.openExternal(updaterState.updateInfo.htmlUrl)
+    } else {
+      window.api.openExternal('https://github.com/D1verlin/YT-DLP-Client/releases')
+    }
   }
 
   const insertTag = (tag) => {
@@ -998,6 +1050,144 @@ export default function SettingsPage() {
               <p className="about-desc-text">
                 {t('aboutDesc', lang)}
               </p>
+
+              {/* ── OTA App Updates (GitHub Releases) ─────────────────────────── */}
+              <div className="about-ota-block">
+                <div className="about-ota-header">
+                  <div className="about-ota-info">
+                    <div className="about-ota-title-row">
+                      <Sparkles size={16} />
+                      <span className="about-ota-title">{t('otaTitle', lang)}</span>
+                      <span className="about-ota-badge">
+                        v{updaterState.currentVersion || '1.0.2'}
+                      </span>
+                    </div>
+                    <span className="about-ota-desc">{t('otaDesc', lang)}</span>
+                  </div>
+
+                  <div className="about-ota-actions">
+                    {updaterState.status === 'downloaded' ? (
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={handleInstallAppUpdate}
+                      >
+                        <RefreshCw size={14} />
+                        <span>{t('otaInstallBtn', lang)}</span>
+                      </button>
+                    ) : updaterState.status === 'available' ? (
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={handleDownloadAppUpdate}
+                      >
+                        <Download size={14} />
+                        <span>{t('otaDownloadBtn', lang)}</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={updaterState.status === 'checking' || updaterState.status === 'downloading'}
+                        onClick={handleCheckAppUpdate}
+                      >
+                        <RefreshCw size={14} className={updaterState.status === 'checking' ? 'spin-anim' : ''} />
+                        <span>
+                          {updaterState.status === 'checking' ? t('otaChecking', lang) : t('otaCheckBtn', lang)}
+                        </span>
+                      </button>
+                    )}
+
+                    {updaterState.updateInfo?.htmlUrl && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={handleOpenReleasePage}
+                        title={t('otaOpenGitHub', lang)}
+                      >
+                        <ExternalLink size={14} />
+                        <span>GitHub</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status / Feedback / Progress Display */}
+                {updaterState.status === 'not-available' && (
+                  <div className="about-ota-status-line success">
+                    <CheckCircle2 size={15} />
+                    <span>{t('otaLatest', lang)} (v{updaterState.latestVersion || updaterState.currentVersion})</span>
+                  </div>
+                )}
+
+                {updaterState.status === 'available' && (
+                  <div className="about-ota-status-line">
+                    <Sparkles size={15} />
+                    <span>
+                      {t('otaAvailable', lang)}: <strong>v{updaterState.latestVersion}</strong>
+                      {updaterState.updateInfo?.releaseDate && (
+                        <span style={{ opacity: 0.7, marginLeft: 8 }}>
+                          ({new Date(updaterState.updateInfo.releaseDate).toLocaleDateString()})
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
+
+                {updaterState.status === 'downloading' && updaterState.progress && (
+                  <div className="ota-progress-box">
+                    <div className="ota-progress-meta">
+                      <span>{t('otaDownloading', lang)}</span>
+                      <span>{updaterState.progress.percent}%</span>
+                    </div>
+                    <div className="ota-progress-track">
+                      <div
+                        className="ota-progress-fill"
+                        style={{ width: `${Math.max(4, Math.min(100, updaterState.progress.percent))}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {updaterState.status === 'downloaded' && (
+                  <div className="about-ota-status-line success">
+                    <CheckCircle2 size={15} />
+                    <span>{t('otaDownloaded', lang)}</span>
+                  </div>
+                )}
+
+                {updaterState.status === 'error' && (
+                  <div className="about-ota-status-line error">
+                    <AlertCircle size={15} />
+                    <span>{updaterState.error || t('otaError', lang)}</span>
+                  </div>
+                )}
+
+                {/* Release Notes Preview */}
+                {updaterState.updateInfo?.releaseNotes && (
+                  <div className="ota-notes-container">
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-sec)', marginBottom: 4 }}>
+                      {t('otaReleaseNotes', lang)}:
+                    </div>
+                    <div className="ota-notes-box">
+                      {updaterState.updateInfo.releaseNotes}
+                    </div>
+                  </div>
+                )}
+
+                {/* Auto-check Toggle */}
+                <div className="settings-toggle-row" style={{ marginTop: 4, padding: '6px 0 0' }}>
+                  <div className="toggle-info">
+                    <span className="toggle-title" style={{ fontSize: 13 }}>{t('otaAutoCheck', lang)}</span>
+                  </div>
+                  <div
+                    className={`switch-toggle ${cfg.autoUpdate !== false ? 'active' : ''}`}
+                    onClick={() => set('autoUpdate', cfg.autoUpdate === false)}
+                  >
+                    <div className="switch-knob" />
+                  </div>
+                </div>
+              </div>
 
               {/* Maintenance & Dangerous Zone */}
               <div className="about-maintenance-block">

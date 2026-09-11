@@ -7,6 +7,12 @@ const useStore = create((set) => ({
   isSetupActive: false,
   setIsSetupActive: (isSetupActive) => set({ isSetupActive }),
 
+  isMaximized: false,
+  setIsMaximized: (isMaximized) => set({ isMaximized }),
+
+  pendingUrl: null,
+  setPendingUrl: (pendingUrl) => set({ pendingUrl }),
+
   tasks: [],
 
   setTasks: (tasks) => set({ tasks }),
@@ -43,7 +49,8 @@ const useStore = create((set) => ({
               streamLabel: data.streamLabel ?? t.streamLabel,
               playlistCurrent: data.playlistCurrent ?? t.playlistCurrent,
               playlistTotal: data.playlistTotal ?? t.playlistTotal,
-              playlistTitle: data.playlistTitle ?? t.playlistTitle
+              playlistTitle: data.playlistTitle ?? t.playlistTitle,
+              entries: data.entries ?? t.entries
             }
           : t
       )

@@ -26,13 +26,9 @@ const api = {
 
   // Downloads
   startDownload: (options) => ipcRenderer.invoke('download:start', options),
-  pauseDownload: (id) => ipcRenderer.invoke('download:pause', id),
-  resumeDownload: (id) => ipcRenderer.invoke('download:resume', id),
   cancelDownload: (id) => ipcRenderer.invoke('download:cancel', id),
   retryDownload: (id) => ipcRenderer.invoke('download:retry', id),
   removeDownload: (id) => ipcRenderer.invoke('download:remove', id),
-  pauseAllDownloads: () => ipcRenderer.invoke('download:pauseAll'),
-  resumeAllDownloads: () => ipcRenderer.invoke('download:resumeAll'),
   clearCompletedDownloads: () => ipcRenderer.invoke('download:clearCompleted'),
   getTasks: () => ipcRenderer.invoke('tasks:get'),
   syncFiles: () => ipcRenderer.invoke('tasks:syncFiles'),
@@ -57,7 +53,13 @@ const api = {
   // Window controls
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
+  isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
+  onWindowStateChange: (callback) => {
+    const listener = (_, isMax) => callback(isMax)
+    ipcRenderer.on('window:maximized-change', listener)
+    return () => ipcRenderer.removeListener('window:maximized-change', listener)
+  },
 
   // App info
   getVersion: () => ipcRenderer.invoke('app:version'),
@@ -66,7 +68,23 @@ const api = {
   openFile: (filePath) => ipcRenderer.invoke('shell:openPath', filePath),
   openFolder: (folderPath) => ipcRenderer.invoke('shell:openFolder', folderPath),
   showInFolder: (filePath) => ipcRenderer.invoke('shell:showInFolder', filePath),
-  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url)
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  onLinkDropped: (callback) => {
+    const listener = (_, url) => callback(url)
+    ipcRenderer.on('app:link-dropped', listener)
+    return () => ipcRenderer.removeListener('app:link-dropped', listener)
+  },
+
+  // OTA App Updates
+  checkForAppUpdates: (isSilent) => ipcRenderer.invoke('updater:check', isSilent),
+  downloadAppUpdate: () => ipcRenderer.invoke('updater:download'),
+  installAppUpdate: () => ipcRenderer.invoke('updater:install'),
+  getAppUpdateState: () => ipcRenderer.invoke('updater:getState'),
+  onAppUpdateStatus: (callback) => {
+    const listener = (_, state) => callback(state)
+    ipcRenderer.on('updater:status', listener)
+    return () => ipcRenderer.removeListener('updater:status', listener)
+  }
 }
 
 if (process.contextIsolated) {

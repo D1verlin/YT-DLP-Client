@@ -6,6 +6,7 @@ import { registerIpcHandlers } from './ipc/handlers'
 import { AppStore } from './services/store'
 import { BinaryManager } from './services/binaryManager'
 import { TaskQueue } from './services/taskQueue'
+import { AppUpdateManager } from './services/appUpdater'
 
 // ─── Debug & DevTools Configuration ──────────────────────────────────────────
 // Set OPEN_DEVTOOLS_ON_STARTUP to true to automatically open DevTools when the app starts.
@@ -18,7 +19,7 @@ app.commandLine.appendSwitch('disable-gpu-process-crash-limit')
 
 let mainWindow
 
-function createWindow() {
+function createWindow(taskQueue) {
   mainWindow = new BrowserWindow({
     width: 1100,
     height: 720,
@@ -43,6 +44,14 @@ function createWindow() {
     }
   })
 
+  mainWindow.on('maximize', () => {
+    if (!mainWindow.isDestroyed()) mainWindow.webContents.send('window:maximized-change', true)
+  })
+
+  mainWindow.on('unmaximize', () => {
+    if (!mainWindow.isDestroyed()) mainWindow.webContents.send('window:maximized-change', false)
+  })
+
   // Keyboard shortcuts: F12 and Ctrl+Shift+I (or Cmd+Opt+I) to toggle DevTools
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return
@@ -52,6 +61,21 @@ function createWindow() {
       mainWindow.webContents.toggleDevTools()
       event.preventDefault()
     }
+  })
+
+  // Intercept dropped URL navigation from external browsers / dragging
+  const handleLinkNavigation = (event, navUrl) => {
+    if (navUrl && !navUrl.startsWith('http://localhost') && !navUrl.startsWith('file://')) {
+      event.preventDefault()
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app:link-dropped', navUrl)
+      }
+    }
+  }
+
+  mainWindow.webContents.on('will-navigate', handleLinkNavigation)
+  mainWindow.webContents.on('will-frame-navigate', (event) => {
+    handleLinkNavigation(event, event.url)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -76,12 +100,32 @@ app.whenReady().then(() => {
   const store = new AppStore()
   const binaryManager = new BinaryManager(store)
   const taskQueue = new TaskQueue(binaryManager, store)
+  const appUpdater = new AppUpdateManager(null, store)
 
-  createWindow()
-  registerIpcHandlers(mainWindow, store, binaryManager, taskQueue)
+  createWindow(taskQueue)
+  appUpdater.setWindow(mainWindow)
+
+  taskQueue.setTaskUpdateCallback((data) => {
+    if (!mainWindow.isDestroyed()) mainWindow.webContents.send('task:update', data)
+  })
+
+  registerIpcHandlers(mainWindow, store, binaryManager, taskQueue, appUpdater)
+
+  // Background auto-check for updates after app startup
+  const settings = store.getSettings()
+  if (settings.autoUpdate !== false) {
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        appUpdater.checkForUpdates(true)
+      }
+    }, 4000)
+  }
 
   app.on('activate', function () {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow(taskQueue)
+      appUpdater.setWindow(mainWindow)
+    }
   })
 })
 

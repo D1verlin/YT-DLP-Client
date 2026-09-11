@@ -16,7 +16,10 @@ import {
   ListVideo,
   CheckSquare,
   Square,
-  Check
+  Check,
+  Scissors,
+  FileText,
+  Disc
 } from 'lucide-react'
 import CustomSelect from './CustomSelect'
 import useStore from '../store/useStore'
@@ -58,6 +61,12 @@ export default function ConfigCard({ info, onAdd, onCancel }) {
   const language = useStore((s) => s.language)
   const [format, setFormat] = useState('video')
   const [quality, setQuality] = useState(info.videoQualities?.[0]?.value || 'best')
+  const [videoCodec, setVideoCodec] = useState('default')
+  const [audioBitrate, setAudioBitrate] = useState('320k')
+  const [subtitles, setSubtitles] = useState('none')
+  const [isTrimming, setIsTrimming] = useState(false)
+  const [trimStart, setTrimStart] = useState('00:00')
+  const [trimEnd, setTrimEnd] = useState(info.duration ? fmtDuration(info.duration) : '')
   const isPlaylist = Boolean(info.isPlaylist)
 
   // Playlist item selections (array of 1-based indices)
@@ -102,27 +111,78 @@ export default function ConfigCard({ info, onAdd, onCancel }) {
     return list
   }, [info.videoQualities, language])
 
+  const codecOptions = [
+    { value: 'default', label: t('codecAuto', language) },
+    { value: 'h264', label: t('codecH264', language) },
+    { value: 'av1', label: t('codecAV1', language) }
+  ]
+
+  const bitrateOptions = [
+    { value: '320k', label: '320 kbps (Max)' },
+    { value: '256k', label: '256 kbps' },
+    { value: '192k', label: '192 kbps' },
+    { value: '128k', label: '128 kbps' }
+  ]
+
+  const subtitleOptions = [
+    { value: 'none', label: t('subsNone', language) },
+    { value: 'ru', label: t('subsRu', language) },
+    { value: 'en', label: t('subsEn', language) },
+    { value: 'all', label: t('subsAll', language) }
+  ]
+
   const viewCountStr = formatViews(info.viewCount, language)
   const likeCountStr = formatLikes(info.likeCount)
   const sizeStr = formatBytes(info.filesizeApprox)
 
   const handleDownloadClick = () => {
+    let timeRange = null
+    if (isTrimming && trimStart.trim() && trimEnd.trim()) {
+      timeRange = `*${trimStart.trim()}-${trimEnd.trim()}`
+    }
+
+    const baseConfig = {
+      format,
+      quality,
+      videoCodec: format === 'video' ? videoCodec : undefined,
+      audioBitrate: format === 'audio' ? audioBitrate : undefined,
+      subtitles: subtitles !== 'none' ? subtitles : undefined,
+      timeRange
+    }
+
     if (isPlaylist) {
       const itemsParam =
         selectedIndices.length === allEntries.length || selectedIndices.length === 0
           ? null
           : selectedIndices.join(',')
+
+      const selectedSet = new Set(selectedIndices.map(Number))
+      const chosen = (allEntries && allEntries.length > 0)
+        ? allEntries.filter((e) => selectedSet.size === 0 || selectedSet.has(Number(e.index)))
+        : []
+
+      const entries = chosen.map((e) => ({
+        index: e.index,
+        id: e.id,
+        title: e.title,
+        duration: e.duration,
+        uploader: e.uploader,
+        url: e.url || (e.id ? `https://www.youtube.com/watch?v=${e.id}` : null),
+        status: 'pending',
+        progress: 0,
+        filePath: null
+      }))
+
       onAdd({
+        ...baseConfig,
         isPlaylist: true,
         playlistItems: itemsParam,
-        format,
-        quality
+        entries
       })
     } else {
       onAdd({
-        isPlaylist: false,
-        format,
-        quality
+        ...baseConfig,
+        isPlaylist: false
       })
     }
   }
@@ -312,9 +372,54 @@ export default function ConfigCard({ info, onAdd, onCancel }) {
         </div>
       )}
 
+      {/* ── TIME TRIMMING SECTION (SINGLE MEDIA) ─────────────── */}
+      {!isPlaylist && (
+        <div className="config-trim-section" style={{ margin: '0 20px 14px', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+              <input
+                type="checkbox"
+                checked={isTrimming}
+                onChange={(e) => setIsTrimming(e.target.checked)}
+                style={{ cursor: 'pointer', accentColor: '#ffffff' }}
+              />
+              <Scissors size={14} className="text-sec" />
+              <span>{t('trimSectionTitle', language)}</span>
+            </label>
+            {isTrimming && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('trimFrom', language)}:</span>
+                  <input
+                    type="text"
+                    value={trimStart}
+                    onChange={(e) => setTrimStart(e.target.value)}
+                    placeholder="00:00"
+                    className="input input-sm font-mono"
+                    style={{ width: 76, textAlign: 'center', padding: '4px 6px', fontSize: 12 }}
+                  />
+                </div>
+                <span style={{ color: 'var(--text-secondary)' }}>—</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{t('trimTo', language)}:</span>
+                  <input
+                    type="text"
+                    value={trimEnd}
+                    onChange={(e) => setTrimEnd(e.target.value)}
+                    placeholder={fmtDuration(info.duration) || "00:00"}
+                    className="input input-sm font-mono"
+                    style={{ width: 76, textAlign: 'center', padding: '4px 6px', fontSize: 12 }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── CONFIGURATION & ACTION BAR ──────────────────────── */}
       <div className="config-action-strip">
-        <div className="config-selects-row">
+        <div className="config-selects-row" style={{ flexWrap: 'wrap' }}>
           <div className="config-select-col">
             <label className="config-field-label">{t('fieldFormat', language)}</label>
             <CustomSelect
@@ -332,6 +437,42 @@ export default function ConfigCard({ info, onAdd, onCancel }) {
                 value={quality}
                 onChange={setQuality}
                 options={qualityOptions}
+              />
+            </div>
+          )}
+
+          {format === 'video' && (
+            <div className="config-select-col">
+              <label className="config-field-label">{t('fieldVideoCodec', language)}</label>
+              <CustomSelect
+                value={videoCodec}
+                onChange={setVideoCodec}
+                options={codecOptions}
+                icon={Film}
+              />
+            </div>
+          )}
+
+          {format === 'audio' && (
+            <div className="config-select-col">
+              <label className="config-field-label">{t('fieldAudioBitrate', language)}</label>
+              <CustomSelect
+                value={audioBitrate}
+                onChange={setAudioBitrate}
+                options={bitrateOptions}
+                icon={Disc}
+              />
+            </div>
+          )}
+
+          {format === 'video' && (
+            <div className="config-select-col">
+              <label className="config-field-label">{t('fieldSubtitles', language)}</label>
+              <CustomSelect
+                value={subtitles}
+                onChange={setSubtitles}
+                options={subtitleOptions}
+                icon={FileText}
               />
             </div>
           )}
