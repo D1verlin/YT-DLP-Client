@@ -18,7 +18,10 @@ import {
   ExternalLink,
   Layers,
   FileCode,
-  RefreshCw
+  RefreshCw,
+  Package,
+  Puzzle,
+  AlertTriangle
 } from 'lucide-react'
 import CustomSelect from '../components/CustomSelect'
 import logoSvg from '../assets/logo.svg'
@@ -102,7 +105,7 @@ export default function SettingsPage() {
   // App OTA Updater state
   const [updaterState, setUpdaterState] = useState({
     status: 'idle',
-    currentVersion: '1.0.3',
+    currentVersion: '1.0.4',
     latestVersion: null,
     updateInfo: null,
     progress: null,
@@ -380,6 +383,7 @@ export default function SettingsPage() {
     { id: 'formats',   label: t('catFormats', lang),   Icon: Film },
     { id: 'cookies',   label: t('catCookies', lang),   Icon: Key },
     { id: 'engine',    label: t('catEngine', lang),    Icon: Cpu },
+    { id: 'plugins',   label: t('catPlugins', lang),   Icon: Package },
     { id: 'developer', label: t('catDeveloper', lang), Icon: FileCode },
     { id: 'about',     label: t('catAbout', lang),     Icon: Info }
   ]
@@ -1032,6 +1036,13 @@ export default function SettingsPage() {
           )}
 
           {/* ══════════════════════════════════════════════════════════════
+              TAB: PLUGINS
+             ══════════════════════════════════════════════════════════════ */}
+          {activeTab === 'plugins' && (
+            <PluginsTab lang={lang} />
+          )}
+
+          {/* ══════════════════════════════════════════════════════════════
               TAB 7: ABOUT
              ══════════════════════════════════════════════════════════════ */}
           {activeTab === 'about' && (
@@ -1052,52 +1063,22 @@ export default function SettingsPage() {
               </p>
 
               {/* ── OTA App Updates (GitHub Releases) ─────────────────────────── */}
-              <div className="about-ota-block">
-                <div className="about-ota-header">
-                  <div className="about-ota-info">
-                    <div className="about-ota-title-row">
-                      <Sparkles size={16} />
+              <div className="about-ota-card">
+                <div className="about-ota-top">
+                  <div className="about-ota-badge-icon">
+                    <Sparkles size={16} />
+                  </div>
+                  <div className="about-ota-main-info">
+                    <div className="about-ota-headline">
                       <span className="about-ota-title">{t('otaTitle', lang)}</span>
-                      <span className="about-ota-badge">
-                        v{updaterState.currentVersion || '1.0.3'}
+                      <span className="about-ota-pill">
+                        v{updaterState.currentVersion || '1.0.4'}
                       </span>
                     </div>
                     <span className="about-ota-desc">{t('otaDesc', lang)}</span>
                   </div>
 
-                  <div className="about-ota-actions">
-                    {updaterState.status === 'downloaded' ? (
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-sm"
-                        onClick={handleInstallAppUpdate}
-                      >
-                        <RefreshCw size={14} />
-                        <span>{t('otaInstallBtn', lang)}</span>
-                      </button>
-                    ) : updaterState.status === 'available' ? (
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-sm"
-                        onClick={handleDownloadAppUpdate}
-                      >
-                        <Download size={14} />
-                        <span>{t('otaDownloadBtn', lang)}</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        disabled={updaterState.status === 'checking' || updaterState.status === 'downloading'}
-                        onClick={handleCheckAppUpdate}
-                      >
-                        <RefreshCw size={14} className={updaterState.status === 'checking' ? 'spin-anim' : ''} />
-                        <span>
-                          {updaterState.status === 'checking' ? t('otaChecking', lang) : t('otaCheckBtn', lang)}
-                        </span>
-                      </button>
-                    )}
-
+                  <div className="about-ota-top-actions">
                     {updaterState.updateInfo?.htmlUrl && (
                       <button
                         type="button"
@@ -1105,80 +1086,152 @@ export default function SettingsPage() {
                         onClick={handleOpenReleasePage}
                         title={t('otaOpenGitHub', lang)}
                       >
-                        <ExternalLink size={14} />
+                        <ExternalLink size={13} />
                         <span>GitHub</span>
+                      </button>
+                    )}
+                    {updaterState.status !== 'available' && updaterState.status !== 'downloaded' && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={updaterState.status === 'checking' || updaterState.status === 'downloading'}
+                        onClick={handleCheckAppUpdate}
+                      >
+                        <RefreshCw size={13} className={updaterState.status === 'checking' ? 'spin-anim' : ''} />
+                        <span>
+                          {updaterState.status === 'checking' ? t('otaChecking', lang) : t('otaCheckBtn', lang)}
+                        </span>
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Status / Feedback / Progress Display */}
-                {updaterState.status === 'not-available' && (
-                  <div className="about-ota-status-line success">
-                    <CheckCircle2 size={15} />
-                    <span>{t('otaLatest', lang)} (v{updaterState.latestVersion || updaterState.currentVersion})</span>
-                  </div>
-                )}
+                {/* Status Indicator & Actions Panel */}
+                <div className="about-ota-body">
+                  {updaterState.status === 'checking' && (
+                    <div className="ota-status-banner checking">
+                      <RefreshCw size={14} className="spin-anim" />
+                      <span>{t('otaChecking', lang)}</span>
+                    </div>
+                  )}
 
-                {updaterState.status === 'available' && (
-                  <div className="about-ota-status-line">
-                    <Sparkles size={15} />
-                    <span>
-                      {t('otaAvailable', lang)}: <strong>v{updaterState.latestVersion}</strong>
-                      {updaterState.updateInfo?.releaseDate && (
-                        <span style={{ opacity: 0.7, marginLeft: 8 }}>
-                          ({new Date(updaterState.updateInfo.releaseDate).toLocaleDateString()})
+                  {updaterState.status === 'not-available' && (
+                    <div className="ota-status-banner success">
+                      <CheckCircle2 size={15} />
+                      <div className="ota-status-text">
+                        <span className="ota-status-title">{t('otaLatest', lang)}</span>
+                        <span className="ota-status-subtitle">
+                          {lang === 'en' ? 'You are using the latest version' : 'Установлена самая свежая версия программы'} (v{updaterState.latestVersion || updaterState.currentVersion})
                         </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {updaterState.status === 'available' && (
+                    <div className="ota-update-available-panel">
+                      <div className="ota-available-banner">
+                        <div className="ota-available-info">
+                          <div className="ota-available-tag">
+                            <Sparkles size={13} />
+                            <span>{t('otaAvailable', lang)}: <strong>v{updaterState.latestVersion}</strong></span>
+                          </div>
+                          {updaterState.updateInfo?.releaseDate && (
+                            <span className="ota-available-date">
+                              {new Date(updaterState.updateInfo.releaseDate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm ota-action-btn"
+                          onClick={handleDownloadAppUpdate}
+                        >
+                          <Download size={14} />
+                          <span>{t('otaDownloadBtn', lang)}</span>
+                        </button>
+                      </div>
+
+                      {updaterState.updateInfo?.releaseNotes && (
+                        <div className="ota-notes-container">
+                          <div className="ota-notes-header">
+                            <span>{t('otaReleaseNotes', lang)}</span>
+                          </div>
+                          <div className="ota-notes-box">
+                            {updaterState.updateInfo.releaseNotes}
+                          </div>
+                        </div>
                       )}
-                    </span>
-                  </div>
-                )}
-
-                {updaterState.status === 'downloading' && updaterState.progress && (
-                  <div className="ota-progress-box">
-                    <div className="ota-progress-meta">
-                      <span>{t('otaDownloading', lang)}</span>
-                      <span>{updaterState.progress.percent}%</span>
                     </div>
-                    <div className="ota-progress-track">
-                      <div
-                        className="ota-progress-fill"
-                        style={{ width: `${Math.max(4, Math.min(100, updaterState.progress.percent))}%` }}
-                      />
+                  )}
+
+                  {updaterState.status === 'downloading' && updaterState.progress && (
+                    <div className="ota-progress-box">
+                      <div className="ota-progress-meta">
+                        <span className="ota-progress-label">
+                          <Download size={13} />
+                          {t('otaDownloading', lang)}
+                        </span>
+                        <span className="ota-progress-percent">{updaterState.progress.percent}%</span>
+                      </div>
+                      <div className="ota-progress-track">
+                        <div
+                          className="ota-progress-fill"
+                          style={{ width: `${Math.max(4, Math.min(100, updaterState.progress.percent))}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {updaterState.status === 'downloaded' && (
-                  <div className="about-ota-status-line success">
-                    <CheckCircle2 size={15} />
-                    <span>{t('otaDownloaded', lang)}</span>
-                  </div>
-                )}
-
-                {updaterState.status === 'error' && (
-                  <div className="about-ota-status-line error">
-                    <AlertCircle size={15} />
-                    <span>{updaterState.error || t('otaError', lang)}</span>
-                  </div>
-                )}
-
-                {/* Release Notes Preview */}
-                {updaterState.updateInfo?.releaseNotes && (
-                  <div className="ota-notes-container">
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-sec)', marginBottom: 4 }}>
-                      {t('otaReleaseNotes', lang)}:
+                  {updaterState.status === 'downloaded' && (
+                    <div className="ota-status-banner downloaded">
+                      <div className="ota-status-left">
+                        <CheckCircle2 size={16} />
+                        <div className="ota-status-text">
+                          <span className="ota-status-title">{t('otaDownloaded', lang)}</span>
+                          <span className="ota-status-subtitle">
+                            {lang === 'en' ? 'Restart application to apply update' : 'Перезапустите программу для завершения установки'} (v{updaterState.latestVersion})
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm ota-action-btn"
+                        onClick={handleInstallAppUpdate}
+                      >
+                        <RefreshCw size={14} />
+                        <span>{t('otaInstallBtn', lang)}</span>
+                      </button>
                     </div>
-                    <div className="ota-notes-box">
-                      {updaterState.updateInfo.releaseNotes}
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Auto-check Toggle */}
-                <div className="settings-toggle-row" style={{ marginTop: 4, padding: '6px 0 0' }}>
+                  {updaterState.status === 'error' && (
+                    <div className="ota-status-banner error">
+                      <div className="ota-status-left">
+                        <AlertCircle size={15} />
+                        <div className="ota-status-text">
+                          <span className="ota-status-title">{t('otaError', lang)}</span>
+                          <span className="ota-status-subtitle">{updaterState.error}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm ota-retry-btn"
+                        onClick={handleCheckAppUpdate}
+                      >
+                        <RefreshCw size={12} />
+                        <span>{lang === 'en' ? 'Retry' : 'Повторить'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Auto-check Toggle Footer */}
+                <div className="about-ota-footer">
                   <div className="toggle-info">
-                    <span className="toggle-title" style={{ fontSize: 13 }}>{t('otaAutoCheck', lang)}</span>
+                    <span className="toggle-title">{t('otaAutoCheck', lang)}</span>
+                    <span className="toggle-desc">
+                      {lang === 'en' ? 'Automatically check for updates on startup' : 'Автоматически проверять наличие обновлений при запуске'}
+                    </span>
                   </div>
                   <div
                     className={`switch-toggle ${cfg.autoUpdate !== false ? 'active' : ''}`}
@@ -1221,4 +1274,191 @@ export default function SettingsPage() {
   )
 }
 
+// ── PluginsTab ─────────────────────────────────────────────────────────────
+function PluginsTab({ lang }) {
+  const [plugins, setPlugins] = useState([])
+  const [pluginsDir, setPluginsDir] = useState('')
+  const [isAdding, setIsAdding] = useState(false)
+  const [addError, setAddError] = useState(null)
+  const [addSuccess, setAddSuccess] = useState(null)
 
+  const loadPlugins = async () => {
+    try {
+      const [list, dir] = await Promise.all([
+        window.api.listPlugins?.(),
+        window.api.getPluginsDir?.()
+      ])
+      setPlugins(list || [])
+      setPluginsDir(dir || '')
+    } catch {
+      setPlugins([])
+    }
+  }
+
+  useEffect(() => {
+    loadPlugins()
+  }, [])
+
+  const handleAdd = async (type = 'file') => {
+    setIsAdding(true)
+    setAddError(null)
+    setAddSuccess(null)
+    try {
+      const sourcePath = await window.api.selectPluginFile?.(type)
+      if (!sourcePath) { setIsAdding(false); return }
+      const res = await window.api.addPlugin?.(sourcePath)
+      if (res?.success) {
+        setAddSuccess(res.name)
+        setTimeout(() => setAddSuccess(null), 3000)
+        loadPlugins()
+      } else {
+        setAddError(res?.error || 'Failed to add plugin')
+      }
+    } catch (e) {
+      setAddError(e.message)
+    } finally {
+      setIsAdding(false)
+    }
+  }
+
+  const handleRemove = async (name) => {
+    if (!window.confirm(t('pluginRemoveConfirm', lang, { name }))) return
+    const res = await window.api.removePlugin?.(name)
+    if (res?.success) loadPlugins()
+  }
+
+  const handleOpenDir = () => window.api.openPluginsDir?.()
+
+  return (
+    <div className="settings-section-card animate-fade">
+      <h2 className="section-card-title">
+        <Package size={18} />
+        <span>{t('catPlugins', lang)}</span>
+      </h2>
+
+      {/* Info block */}
+      <div className="plugin-info-block">
+        <div className="plugin-info-icon"><Package size={16} /></div>
+        <div className="plugin-info-text">
+          <span className="plugin-info-title">{t('pluginsInfoTitle', lang)}</span>
+          <span className="plugin-info-desc">{t('pluginsInfoDesc', lang)}</span>
+        </div>
+      </div>
+
+      {/* External links */}
+      <div className="plugin-links-row">
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => window.api.openExternal('https://github.com/yt-dlp/yt-dlp/wiki/Plugins')}
+        >
+          <ExternalLink size={13} />
+          <span>{t('pluginsDocsLink', lang)}</span>
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => window.api.openExternal('https://github.com/yt-dlp/yt-dlp/wiki/Plugins#installing-plugins')}
+        >
+          <ExternalLink size={13} />
+          <span>{t('pluginsWikiLink', lang)}</span>
+        </button>
+      </div>
+
+      {/* Plugin directory */}
+      <div className="settings-control-group" style={{ marginTop: 20 }}>
+        <div className="control-group-header">
+          <span className="control-title">{t('pluginsDirTitle', lang)}</span>
+          <span className="control-desc">{t('pluginsDirDesc', lang)}</span>
+        </div>
+        <div className="folder-picker-row" style={{ marginTop: 10 }}>
+          <input
+            type="text"
+            className="input input-sm font-mono flex-1"
+            readOnly
+            value={pluginsDir}
+          />
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenDir}>
+            <FolderOpen size={14} />
+            <span>{t('btnOpenPluginsDir', lang)}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="plugin-actions-row">
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => handleAdd('file')}
+          disabled={isAdding}
+        >
+          <Package size={15} />
+          <span>{isAdding ? '...' : t('btnAddPluginZip', lang)}</span>
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => handleAdd('folder')}
+          disabled={isAdding}
+        >
+          <FolderOpen size={15} />
+          <span>{t('btnAddPluginFolder', lang)}</span>
+        </button>
+        {addSuccess && (
+          <span className="plugin-add-success">
+            <CheckCircle2 size={14} />
+            {addSuccess}
+          </span>
+        )}
+        {addError && (
+          <span className="plugin-add-error">
+            <AlertTriangle size={14} />
+            {addError}
+          </span>
+        )}
+      </div>
+
+      {/* Plugin list */}
+      {plugins.length === 0 ? (
+        <div className="plugin-empty-state">
+          <Puzzle size={32} style={{ opacity: 0.3 }} />
+          <span className="plugin-empty-title">{t('pluginsEmpty', lang)}</span>
+          <span className="plugin-empty-desc">{t('pluginsEmptyDesc', lang)}</span>
+        </div>
+      ) : (
+        <div className="plugin-list">
+          {plugins.map((p) => (
+            <div key={p.name} className="plugin-card">
+              <div className="plugin-card-icon">
+                {p.type === 'zip' ? <Package size={16} /> : <FolderOpen size={16} />}
+              </div>
+              <div className="plugin-card-info">
+                <span className="plugin-card-name">{p.name}</span>
+                <span className="plugin-card-meta">
+                  <span className={`plugin-type-badge ${p.type === 'zip' ? 'badge-zip' : 'badge-folder'}`}>
+                    {p.type === 'zip' ? t('pluginTypeZip', lang) : t('pluginTypeFolder', lang)}
+                  </span>
+                  {p.size != null && (
+                    <span className="plugin-size">
+                      {(p.size / 1024).toFixed(1)} KB
+                    </span>
+                  )}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm danger-btn"
+                onClick={() => handleRemove(p.name)}
+                title={t('btnRemovePlugin', lang)}
+              >
+                <Trash2 size={13} />
+                <span>{t('btnRemovePlugin', lang)}</span>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

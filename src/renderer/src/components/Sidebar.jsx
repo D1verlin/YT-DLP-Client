@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Download, Settings } from 'lucide-react'
+import { Plus, Download, Settings, Globe } from 'lucide-react'
 import useStore from '../store/useStore'
 import logoSvg from '../assets/logo.svg'
 import { t } from '../utils/i18n'
@@ -27,6 +27,7 @@ export default function Sidebar({ current, onNav, dimmed }) {
   ]
 
   const bottomNav = [
+    { id: 'sites',    label: t('navSites', language),    Icon: Globe },
     { id: 'settings', label: t('navSettings', language), Icon: Settings }
   ]
 

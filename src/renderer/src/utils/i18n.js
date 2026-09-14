@@ -16,6 +16,19 @@ export const translations = {
     // Add Video Page & Media Config
     addHeroTitle: 'YT-DLP',
     addHeroSub: 'Вставьте ссылку на видео или плейлист для быстрой загрузки в максимальном качестве',
+    modeSingle: 'Одиночная ссылка',
+    modeBatch: 'Множественный ввод',
+    batchHeroSub: 'Вставьте несколько ссылок (по одной на строку) для одновременного скачивания',
+    batchPlaceholder: 'Вставьте ссылки построчно, например:\nhttps://youtube.com/watch?v=...\nlink.com\nlink2.com',
+    batchDetectedCount: '{count} ссылок',
+    batchDetectedSingular: '{count} ссылка',
+    batchDetectedFew: '{count} ссылки',
+    batchPaste: 'Вставить из буфера',
+    batchClear: 'Очистить',
+    batchDownloadBtn: 'Скачать все ({count})',
+    batchSettingsTitle: 'Параметры для всех ссылок',
+    batchAllowPlaylists: 'Скачивать плейлисты целиком (если ссылка на плейлист)',
+    batchAddingTasks: 'Добавление задач в очередь...',
     urlPlaceholder: 'Вставьте ссылку',
     btnPaste: 'Вставить',
     btnAnalyze: 'Анализировать',
@@ -233,7 +246,7 @@ export const translations = {
 
     // About
     aboutClientTitle: 'YT-DLP Desktop Client',
-    aboutVersion: 'Версия 1.0.3',
+    aboutVersion: 'Версия 1.0.4',
     aboutSubtitle: 'Modern High-Performance Downloader',
     aboutDesc: 'Мощный, стильный и быстрый графический интерфейс для yt-dlp с поддержкой YouTube, VK, Rutube, TikTok, Twitch, Soundcloud и более 1000 других сервисов.',
     btnResetDefaults: 'Сбросить настройки до заводских',
@@ -306,7 +319,41 @@ export const translations = {
     tagExt: 'Расширение',
     tagRes: 'Разрешение',
     tagPlaylist: 'Название плейлиста',
-    tagIndex: 'Номер в плейлисте'
+    tagIndex: 'Номер в плейлисте',
+
+    // Supported Sites page
+    navSites: 'Поддерживаемые сайты',
+    titleSites: 'Поддерживаемые сайты',
+    sitesSubtitle: 'Полный список сайтов и сервисов, поддерживаемых движком yt-dlp',
+    sitesInfoTitle: 'О поддерживаемых сайтах',
+    sitesInfoDesc: 'Ниже приведён список всех экстракторов, включённых в yt-dlp. Если сайт не найден в списке — он всё равно может поддерживаться через встраиваемые плееры или универсальный экстрактор. Единственный надёжный способ проверки — попробовать.',
+    sitesSearchPlaceholder: 'Поиск по сайтам...',
+    sitesCount: 'Всего: {count} сайтов',
+    sitesBroken: 'Нерабочий',
+    sitesNetrc: 'Требует авторизацию',
+    sitesNoResults: 'Ничего не найдено',
+    sitesNoResultsDesc: 'По запросу «{query}» ничего не найдено',
+    sitesLoading: 'Загрузка списка сайтов...',
+    sitesError: 'Не удалось загрузить список сайтов',
+
+    // Plugin Manager
+    catPlugins: 'Плагины',
+    pluginsInfoTitle: 'Плагины yt-dlp',
+    pluginsInfoDesc: 'Плагины расширяют возможности yt-dlp, добавляя поддержку новых сайтов или изменяя поведение. Поддерживаются ZIP-архивы и папки плагинов по стандарту yt-dlp Plugins API.',
+    pluginsDirTitle: 'Папка плагинов',
+    pluginsDirDesc: 'Плагины из этой папки автоматически передаются в yt-dlp при каждой загрузке',
+    btnAddPlugin: 'Добавить плагин',
+    btnAddPluginZip: 'Добавить ZIP-плагин',
+    btnAddPluginFolder: 'Добавить папку',
+    btnOpenPluginsDir: 'Открыть папку',
+    pluginsEmpty: 'Нет установленных плагинов',
+    pluginsEmptyDesc: 'Нажмите «Добавить плагин» для установки ZIP-файла или папки плагина',
+    pluginTypeZip: 'ZIP-архив',
+    pluginTypeFolder: 'Папка',
+    btnRemovePlugin: 'Удалить',
+    pluginRemoveConfirm: 'Удалить плагин «{name}»?',
+    pluginsDocsLink: 'Документация по плагинам yt-dlp',
+    pluginsWikiLink: 'Каталог плагинов (GitHub Wiki)'
   },
 
   en: {
@@ -326,6 +373,19 @@ export const translations = {
     // Add Video Page & Media Config
     addHeroTitle: 'YT-DLP',
     addHeroSub: 'Paste video or playlist link for high-speed download in highest quality',
+    modeSingle: 'Single Link',
+    modeBatch: 'Batch / Multiple',
+    batchHeroSub: 'Paste multiple links (one per line) for concurrent queue download',
+    batchPlaceholder: 'Paste links one per line, e.g.:\nhttps://youtube.com/watch?v=...\nlink.com\nlink2.com',
+    batchDetectedCount: '{count} links detected',
+    batchDetectedSingular: '{count} link detected',
+    batchDetectedFew: '{count} links detected',
+    batchPaste: 'Paste from clipboard',
+    batchClear: 'Clear all',
+    batchDownloadBtn: 'Download All ({count})',
+    batchSettingsTitle: 'Batch Download Options',
+    batchAllowPlaylists: 'Download full playlist if URL is a playlist',
+    batchAddingTasks: 'Adding tasks to queue...',
     urlPlaceholder: 'Paste link',
     btnPaste: 'Paste',
     btnAnalyze: 'Analyze',
@@ -586,7 +646,7 @@ export const translations = {
 
     // About
     aboutClientTitle: 'YT-DLP Desktop Client',
-    aboutVersion: 'Version 1.0.3',
+    aboutVersion: 'Version 1.0.4',
     aboutSubtitle: 'Modern High-Performance Downloader',
     aboutDesc: 'Powerful, elegant and rapid desktop GUI client for yt-dlp supporting YouTube, VK, Rutube, TikTok, Twitch, Soundcloud and over 1000+ media sites.',
     btnResetDefaults: 'Reset Settings to Defaults',
@@ -616,7 +676,41 @@ export const translations = {
     tagExt: 'Extension',
     tagRes: 'Resolution',
     tagPlaylist: 'Playlist Title',
-    tagIndex: 'Playlist Index'
+    tagIndex: 'Playlist Index',
+
+    // Supported Sites page
+    navSites: 'Supported Sites',
+    titleSites: 'Supported Sites',
+    sitesSubtitle: 'Full list of sites and services supported by the yt-dlp engine',
+    sitesInfoTitle: 'About Supported Sites',
+    sitesInfoDesc: 'Below is a list of all extractors included with yt-dlp. If a site is not listed here, it might still be supported via embed extraction or the generic extractor. The only reliable way to check if a site is supported is to try it.',
+    sitesSearchPlaceholder: 'Search sites...',
+    sitesCount: 'Total: {count} sites',
+    sitesBroken: 'Currently broken',
+    sitesNetrc: 'Requires login',
+    sitesNoResults: 'No results found',
+    sitesNoResultsDesc: 'No sites matching «{query}» were found',
+    sitesLoading: 'Loading site list...',
+    sitesError: 'Failed to load site list',
+
+    // Plugin Manager
+    catPlugins: 'Plugins',
+    pluginsInfoTitle: 'yt-dlp Plugins',
+    pluginsInfoDesc: 'Plugins extend yt-dlp capabilities by adding new site support or modifying behavior. Supports ZIP archives and plugin folders following the yt-dlp Plugins API standard.',
+    pluginsDirTitle: 'Plugin Directory',
+    pluginsDirDesc: 'Plugins in this folder are automatically passed to yt-dlp on every download',
+    btnAddPlugin: 'Add Plugin',
+    btnAddPluginZip: 'Add ZIP Plugin',
+    btnAddPluginFolder: 'Add Folder',
+    btnOpenPluginsDir: 'Open Folder',
+    pluginsEmpty: 'No plugins installed',
+    pluginsEmptyDesc: 'Click "Add Plugin" to install a ZIP file or plugin folder',
+    pluginTypeZip: 'ZIP Archive',
+    pluginTypeFolder: 'Folder',
+    btnRemovePlugin: 'Remove',
+    pluginRemoveConfirm: 'Remove plugin "{name}"?',
+    pluginsDocsLink: 'yt-dlp Plugins Documentation',
+    pluginsWikiLink: 'Plugin Catalog (GitHub Wiki)'
   }
 }
 

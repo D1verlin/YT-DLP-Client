@@ -25,6 +25,7 @@ export default function Titlebar({ page }) {
   const pageTitles = {
     add:      t('titleAdd', language),
     queue:    t('titleQueue', language),
+    sites:    t('titleSites', language),
     settings: t('titleSettings', language)
   }
 
@@ -36,7 +37,7 @@ export default function Titlebar({ page }) {
       <span className="titlebar-title">{pageTitles[page] ?? 'YT-DLP Client'}</span>
       <div className="titlebar-controls no-drag">
         <button className="titlebar-btn" title={t('minimize', language)} onClick={() => window.api.minimizeWindow()}>
-          <Minus size={14} />
+          <Minus size={12} />
         </button>
         <button
           className="titlebar-btn"
@@ -44,16 +45,16 @@ export default function Titlebar({ page }) {
           onClick={() => window.api.maximizeWindow()}
         >
           {isMaximized ? (
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
               <path d="M3 5v9h9V5H3zm8 8H4V6h7v7z"/>
               <path d="M5 2h9v9h-2V3H5V2z"/>
             </svg>
           ) : (
-            <Square size={12} />
+            <Square size={10} />
           )}
         </button>
         <button className="titlebar-btn close" title={t('close', language)} onClick={() => window.api.closeWindow()}>
-          <X size={14} />
+          <X size={13} />
         </button>
       </div>
     </header>

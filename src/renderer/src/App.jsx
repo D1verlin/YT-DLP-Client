@@ -6,6 +6,7 @@ import AddPage from './pages/Add'
 import QueuePage from './pages/Queue'
 import SettingsPage from './pages/Settings'
 import SetupPage from './pages/Setup'
+import SupportedSitesPage from './pages/SupportedSites'
 import useStore from './store/useStore'
 import { t } from './utils/i18n'
 
@@ -202,6 +203,7 @@ export default function App() {
   const pages = {
     add:      <AddPage onNav={setPage} />,
     queue:    <QueuePage onNav={setPage} />,
+    sites:    <SupportedSitesPage />,
     settings: <SettingsPage />
   }
 

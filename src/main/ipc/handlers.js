@@ -1,9 +1,9 @@
 import { ipcMain, dialog, app, shell } from 'electron'
 import { execFile } from 'child_process'
-import { normalize, resolve, dirname } from 'path'
-import { existsSync, statSync } from 'fs'
+import { normalize, resolve, dirname, join } from 'path'
+import { existsSync, statSync, readFileSync, readdirSync } from 'fs'
 
-function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue, appUpdater) {
+function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue, appUpdater, pluginManager) {
   // ─── Binaries ─────────────────────────────────────────────────────────────
   ipcMain.handle('binaries:check', () => ({
     ready: binaryManager.areBinariesReady(),
@@ -81,6 +81,17 @@ function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue, appUpd
         args.push('--cookies-from-browser', settings.cookiesFromBrowser.trim())
       } else if (settings.cookiesFilePath && settings.cookiesFilePath.trim()) {
         args.push('--cookies', settings.cookiesFilePath.trim())
+      }
+
+      if (pluginManager) {
+        try {
+          const pDir = pluginManager.getPluginsDir()
+          if (existsSync(pDir) && readdirSync(pDir).length > 0) {
+            args.push('--plugin-dirs', pDir)
+          }
+        } catch {
+          // ignore
+        }
       }
 
       args.push(url.trim())
@@ -217,6 +228,10 @@ function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue, appUpd
   ipcMain.handle('download:start', (_, options) => {
     const task = taskQueue.addTask(options)
     return { success: true, task }
+  })
+  ipcMain.handle('download:batch', (_, items) => {
+    const tasks = (Array.isArray(items) ? items : []).map((opt) => taskQueue.addTask(opt))
+    return { success: true, tasks }
   })
   ipcMain.handle('download:cancel', (_, id) => ({ success: taskQueue.cancelTask(id) }))
   ipcMain.handle('download:retry', (_, id) => ({ success: taskQueue.retryTask(id) }))
@@ -364,8 +379,91 @@ function registerIpcHandlers(mainWindow, store, binaryManager, taskQueue, appUpd
     }
     return null
   })
+
+  // ─── Supported Sites ──────────────────────────────────────────────────────
+  ipcMain.handle('sites:getList', () => {
+    try {
+      // Try resources dir first (packaged app), then project root (dev)
+      const candidatePaths = [
+        join(app.getAppPath(), 'resources', 'supportedsites.md'),
+        join(__dirname, '../../resources/supportedsites.md'),
+        join(__dirname, '../../../resources/supportedsites.md'),
+        join(process.resourcesPath || '', 'supportedsites.md')
+      ]
+
+      let raw = null
+      for (const p of candidatePaths) {
+        if (existsSync(p)) {
+          raw = readFileSync(p, 'utf-8')
+          break
+        }
+      }
+
+      if (!raw) return { success: false, error: 'supportedsites.md not found', sites: [] }
+
+      const sites = []
+      const lines = raw.split('\n')
+      for (const line of lines) {
+        const match = line.match(/^\s+-\s+\*\*(.+?)\*\*/)
+        if (!match) continue
+        const full = match[1]
+        const isBroken = line.includes('Currently broken')
+        const netrcMatch = line.match(/\[.*?\]\(## "netrc machine"\)/)
+        const netrc = netrcMatch ? line.match(/\[(.+?)\]\(## "netrc machine"\)/)?.[1] || null : null
+        sites.push({ name: full, isBroken, netrc })
+      }
+
+      return { success: true, sites, total: sites.length }
+    } catch (e) {
+      return { success: false, error: e.message, sites: [] }
+    }
+  })
+
+  // ─── Plugin Manager ────────────────────────────────────────────────────────
+  ipcMain.handle('plugins:list', () => {
+    if (!pluginManager) return []
+    return pluginManager.listPlugins()
+  })
+
+  ipcMain.handle('plugins:getDir', () => {
+    if (!pluginManager) return null
+    return pluginManager.getPluginsDir()
+  })
+
+  ipcMain.handle('plugins:add', async (_, sourcePath) => {
+    if (!pluginManager) return { success: false, error: 'PluginManager not initialized' }
+    return pluginManager.addPlugin(sourcePath)
+  })
+
+  ipcMain.handle('plugins:remove', (_, name) => {
+    if (!pluginManager) return { success: false, error: 'PluginManager not initialized' }
+    return pluginManager.removePlugin(name)
+  })
+
+  ipcMain.handle('plugins:openDir', async () => {
+    if (!pluginManager) return { success: false }
+    const dir = pluginManager.getPluginsDir()
+    try {
+      await shell.openPath(dir)
+      return { success: true }
+    } catch (e) {
+      return { success: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('plugins:selectFile', async (_, type = 'file') => {
+    const isFolder = type === 'folder' || type === 'directory'
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: isFolder ? 'Select Plugin Folder' : 'Select yt-dlp Plugin (.zip)',
+      filters: isFolder ? [] : [
+        { name: 'yt-dlp Plugins (*.zip)', extensions: ['zip'] },
+        { name: 'All Files (*.*)', extensions: ['*'] }
+      ],
+      properties: isFolder ? ['openDirectory'] : ['openFile']
+    })
+    if (result.canceled || !result.filePaths.length) return null
+    return result.filePaths[0]
+  })
 }
 
 export { registerIpcHandlers }
-
-

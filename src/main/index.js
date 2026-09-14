@@ -7,6 +7,7 @@ import { AppStore } from './services/store'
 import { BinaryManager } from './services/binaryManager'
 import { TaskQueue } from './services/taskQueue'
 import { AppUpdateManager } from './services/appUpdater'
+import { PluginManager } from './services/pluginManager'
 
 // ─── Debug & DevTools Configuration ──────────────────────────────────────────
 // Set OPEN_DEVTOOLS_ON_STARTUP to true to automatically open DevTools when the app starts.
@@ -101,6 +102,7 @@ app.whenReady().then(() => {
   const binaryManager = new BinaryManager(store)
   const taskQueue = new TaskQueue(binaryManager, store)
   const appUpdater = new AppUpdateManager(null, store)
+  const pluginManager = new PluginManager()
 
   createWindow(taskQueue)
   appUpdater.setWindow(mainWindow)
@@ -109,7 +111,7 @@ app.whenReady().then(() => {
     if (!mainWindow.isDestroyed()) mainWindow.webContents.send('task:update', data)
   })
 
-  registerIpcHandlers(mainWindow, store, binaryManager, taskQueue, appUpdater)
+  registerIpcHandlers(mainWindow, store, binaryManager, taskQueue, appUpdater, pluginManager)
 
   // Background auto-check for updates after app startup
   const settings = store.getSettings()

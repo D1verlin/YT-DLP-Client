@@ -1,6 +1,5 @@
 import { autoUpdater } from 'electron-updater'
-import { app, shell } from 'electron'
-import https from 'https'
+import { app, shell, net } from 'electron'
 
 function compareSemver(v1, v2) {
   const parse = (v) =>
@@ -124,82 +123,77 @@ export class AppUpdateManager {
       this._notify({ status: 'checking', error: null })
     }
 
-    return new Promise((resolve) => {
-      const options = {
-        hostname: 'api.github.com',
-        path: `/repos/${this.githubOwner}/${this.githubRepo}/releases/latest`,
-        headers: {
-          'User-Agent': 'YT-DLP-Client-Updater',
-          Accept: 'application/vnd.github.v3+json'
-        },
-        timeout: 10000
-      }
+    try {
+      const fetchFn = (typeof net !== 'undefined' && typeof net.fetch === 'function') ? net.fetch : globalThis.fetch
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 12000)
 
-      const req = https.get(options, (res) => {
-        let rawData = ''
-        res.on('data', (chunk) => {
-          rawData += chunk
-        })
-        res.on('end', () => {
-          if (res.statusCode === 200) {
-            try {
-              const release = JSON.parse(rawData)
-              const latestTag = release.tag_name || ''
-              const latestVer = latestTag.replace(/^v/i, '')
-              const currentVer = app.getVersion()
-
-              const isNewer = compareSemver(latestVer, currentVer) > 0
-
-              if (isNewer) {
-                const info = {
-                  version: latestVer,
-                  releaseName: release.name || latestTag,
-                  releaseDate: release.published_at,
-                  releaseNotes: release.body,
-                  htmlUrl: release.html_url,
-                  assets: (release.assets || []).map((a) => ({
-                    name: a.name,
-                    size: a.size,
-                    downloadUrl: a.browser_download_url
-                  }))
-                }
-                this._notify({
-                  status: 'available',
-                  latestVersion: latestVer,
-                  updateInfo: info,
-                  error: null
-                })
-                resolve({ available: true, info })
-              } else {
-                this._notify({
-                  status: 'not-available',
-                  latestVersion: latestVer,
-                  error: null
-                })
-                resolve({ available: false, version: latestVer })
-              }
-            } catch (err) {
-              this._notify({ status: 'error', error: 'Failed to parse release data' })
-              resolve({ available: false, error: err.message })
-            }
-          } else {
-            this._notify({ status: 'error', error: `GitHub API error (HTTP ${res.statusCode})` })
-            resolve({ available: false, error: `HTTP ${res.statusCode}` })
+      const res = await fetchFn(
+        `https://api.github.com/repos/${this.githubOwner}/${this.githubRepo}/releases/latest`,
+        {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'YT-DLP-Client-Updater',
+            'Accept': 'application/vnd.github.v3+json'
           }
+        }
+      )
+      clearTimeout(timeoutId)
+
+      if (res.status === 200) {
+        const release = await res.json()
+        const latestTag = release.tag_name || ''
+        const latestVer = latestTag.replace(/^v/i, '')
+        const currentVer = app.getVersion()
+
+        const isNewer = compareSemver(latestVer, currentVer) > 0
+
+        if (isNewer) {
+          const info = {
+            version: latestVer,
+            releaseName: release.name || latestTag,
+            releaseDate: release.published_at,
+            releaseNotes: release.body,
+            htmlUrl: release.html_url,
+            assets: (release.assets || []).map((a) => ({
+              name: a.name,
+              size: a.size,
+              downloadUrl: a.browser_download_url
+            }))
+          }
+          this._notify({
+            status: 'available',
+            latestVersion: latestVer,
+            updateInfo: info,
+            error: null
+          })
+          return { available: true, info }
+        } else {
+          this._notify({
+            status: 'not-available',
+            latestVersion: latestVer,
+            error: null
+          })
+          return { available: false, version: latestVer }
+        }
+      } else if (res.status === 404) {
+        this._notify({
+          status: 'not-available',
+          latestVersion: this.state.currentVersion,
+          error: null
         })
-      })
-
-      req.on('error', (err) => {
-        this._notify({ status: 'error', error: err.message || 'Network error' })
-        resolve({ available: false, error: err.message })
-      })
-
-      req.on('timeout', () => {
-        req.destroy()
-        this._notify({ status: 'error', error: 'Connection timeout' })
-        resolve({ available: false, error: 'timeout' })
-      })
-    })
+        return { available: false, version: this.state.currentVersion }
+      } else {
+        const errText = `GitHub API HTTP ${res.status}`
+        this._notify({ status: 'error', error: errText })
+        return { available: false, error: errText }
+      }
+    } catch (err) {
+      const isTimeout = err?.name === 'AbortError'
+      const errMsg = isTimeout ? 'Connection timeout' : (err?.message || 'Network error')
+      this._notify({ status: 'error', error: errMsg })
+      return { available: false, error: errMsg }
+    }
   }
 
   async checkForUpdates(isSilent = false) {

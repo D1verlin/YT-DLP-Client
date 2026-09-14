@@ -26,6 +26,7 @@ const api = {
 
   // Downloads
   startDownload: (options) => ipcRenderer.invoke('download:start', options),
+  startBatchDownload: (items) => ipcRenderer.invoke('download:batch', items),
   cancelDownload: (id) => ipcRenderer.invoke('download:cancel', id),
   retryDownload: (id) => ipcRenderer.invoke('download:retry', id),
   removeDownload: (id) => ipcRenderer.invoke('download:remove', id),
@@ -84,7 +85,18 @@ const api = {
     const listener = (_, state) => callback(state)
     ipcRenderer.on('updater:status', listener)
     return () => ipcRenderer.removeListener('updater:status', listener)
-  }
+  },
+
+  // Supported Sites
+  getSupportedSites: () => ipcRenderer.invoke('sites:getList'),
+
+  // Plugin Manager
+  listPlugins: () => ipcRenderer.invoke('plugins:list'),
+  getPluginsDir: () => ipcRenderer.invoke('plugins:getDir'),
+  addPlugin: (sourcePath) => ipcRenderer.invoke('plugins:add', sourcePath),
+  removePlugin: (name) => ipcRenderer.invoke('plugins:remove', name),
+  openPluginsDir: () => ipcRenderer.invoke('plugins:openDir'),
+  selectPluginFile: (type) => ipcRenderer.invoke('plugins:selectFile', type)
 }
 
 if (process.contextIsolated) {

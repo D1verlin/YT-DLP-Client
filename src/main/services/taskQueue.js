@@ -1,7 +1,7 @@
 import { spawn } from 'child_process'
-import { join, dirname } from 'path'
-import { existsSync, unlinkSync } from 'fs'
-import { Notification, shell } from 'electron'
+import { join, dirname, basename, extname } from 'path'
+import { existsSync, unlinkSync, readdirSync } from 'fs'
+import { Notification, shell, app as electronApp } from 'electron'
 import {
   parseProgress,
   parseDestination,
@@ -186,6 +186,15 @@ class TaskQueue {
         const dest = parseDestination(line)
         if (dest && !isFragmentPath(dest)) {
           task.filePath = dest
+          if ((!task.title || task.title === task.url) && !task.config?.isPlaylist) {
+            try {
+              const derivedTitle = basename(dest, extname(dest))
+              if (derivedTitle) {
+                task.title = derivedTitle
+                this._notifyTaskUpdate({ ...task })
+              }
+            } catch {}
+          }
           if (destCount > 0) streamIndex = Math.min(streamIndex + 1, totalStreams - 1)
           destCount++
 
@@ -200,6 +209,15 @@ class TaskQueue {
         const mergeDest = parseMergeDestination(line)
         if (mergeDest) {
           task.filePath = mergeDest
+          if ((!task.title || task.title === task.url) && !task.config?.isPlaylist) {
+            try {
+              const derivedTitle = basename(mergeDest, extname(mergeDest))
+              if (derivedTitle) {
+                task.title = derivedTitle
+                this._notifyTaskUpdate({ ...task })
+              }
+            } catch {}
+          }
           if (task.entries && task.entries.length > 0 && task.playlistCurrent) {
             const currentIdx = task.playlistCurrent - 1
             if (task.entries[currentIdx]) {
@@ -216,6 +234,12 @@ class TaskQueue {
 
         const alreadyPath = parseAlreadyDownloaded(line)
         if (alreadyPath) {
+          if ((!task.title || task.title === task.url) && !task.config?.isPlaylist) {
+            try {
+              const derivedTitle = basename(alreadyPath, extname(alreadyPath))
+              if (derivedTitle) task.title = derivedTitle
+            } catch {}
+          }
           if (task.config?.isPlaylist) {
             if (task.entries && task.entries.length > 0 && task.playlistCurrent) {
               const currentIdx = task.playlistCurrent - 1
@@ -323,6 +347,13 @@ class TaskQueue {
         task.status = 'completed'
         task.progress = 100
         task.streamLabel = ''
+
+        if (task.filePath && (!task.title || task.title === task.url) && !task.config?.isPlaylist) {
+          try {
+            const derivedTitle = basename(task.filePath, extname(task.filePath))
+            if (derivedTitle) task.title = derivedTitle
+          } catch {}
+        }
 
         if (task.entries && task.entries.length > 0) {
           task.entries.forEach((entry) => {
@@ -438,7 +469,9 @@ class TaskQueue {
       const itemTemplate = settings.nameTemplate || '%(playlist_index)02d - %(title)s.%(ext)s'
       outputPath = join(settings.downloadPath, '%(playlist_title,playlist)s', itemTemplate)
     } else {
-      args.push('--no-playlist')
+      if (!config.allowPlaylists) {
+        args.push('--no-playlist')
+      }
       const template = settings.nameTemplate || '%(title)s.%(ext)s'
       outputPath = join(settings.downloadPath, template)
     }
@@ -476,6 +509,25 @@ class TaskQueue {
 
     // Continue on non-fatal errors
     args.push('--no-abort-on-error')
+
+    // Plugin directories support — inject --plugin-dirs if plugins folder has content
+    try {
+      const appDir = electronApp.isPackaged ? dirname(electronApp.getPath('exe')) : electronApp.getAppPath()
+      const appPluginsDir = join(appDir, 'plugins')
+      const userDataPluginsDir = join(electronApp.getPath('userData'), 'plugins')
+      const legacyPluginsDir = join(electronApp.getPath('userData'), 'yt-dlp-plugins')
+
+      const dirToCheck = existsSync(appPluginsDir)
+        ? appPluginsDir
+        : (existsSync(userDataPluginsDir) ? userDataPluginsDir : legacyPluginsDir)
+
+      if (existsSync(dirToCheck) && readdirSync(dirToCheck).length > 0) {
+        args.push('--plugin-dirs', dirToCheck)
+      }
+    } catch {
+      // ignore — plugin dirs are optional
+    }
+
     args.push('--newline')
     args.push(task.url)
 

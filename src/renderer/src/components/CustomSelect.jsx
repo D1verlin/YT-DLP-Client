@@ -15,6 +15,7 @@ export default function CustomSelect({
   const activePlaceholder = placeholder || defaultPlaceholder
   const [isOpen, setIsOpen] = useState(false)
   const [placement, setPlacement] = useState('bottom')
+  const [placementX, setPlacementX] = useState('left')
   const [maxHeight, setMaxHeight] = useState(210)
   const containerRef = useRef(null)
 
@@ -27,12 +28,13 @@ export default function CustomSelect({
 
   const selectedOption = formattedOptions.find((opt) => opt.value === value)
 
-  // Smart placement detection: flips to 'top' if near screen bottom
+  // Smart placement detection: flips to 'top' if near screen bottom, and checks right bound
   useEffect(() => {
     if (isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect()
       const spaceBelow = window.innerHeight - rect.bottom
       const spaceAbove = rect.top
+      const spaceRight = window.innerWidth - rect.left
       const estimatedHeight = Math.min(220, formattedOptions.length * 36 + 12)
 
       if (spaceBelow < estimatedHeight && spaceAbove > spaceBelow) {
@@ -41,6 +43,12 @@ export default function CustomSelect({
       } else {
         setPlacement('bottom')
         setMaxHeight(Math.min(220, Math.max(100, spaceBelow - 24)))
+      }
+
+      if (spaceRight < 300 && rect.right > 300) {
+        setPlacementX('right')
+      } else {
+        setPlacementX('left')
       }
     }
   }, [isOpen, formattedOptions.length])
@@ -105,6 +113,7 @@ export default function CustomSelect({
         type="button"
         className="custom-select-trigger"
         onClick={() => setIsOpen((prev) => !prev)}
+        title={selectedOption ? selectedOption.label : activePlaceholder}
       >
         <div className="custom-select-value">
           {Icon && <Icon size={14} className="custom-select-icon" />}
@@ -120,7 +129,7 @@ export default function CustomSelect({
 
       {/* Floating Dropdown Popup with Auto-Placement */}
       {isOpen && (
-        <div className={`custom-select-dropdown placement-${placement}`}>
+        <div className={`custom-select-dropdown placement-${placement} align-${placementX}`}>
           <div
             className="custom-select-list"
             style={{ maxHeight: `${maxHeight}px` }}
